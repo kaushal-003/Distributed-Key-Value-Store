@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package kvstore;
+
+option go_package = "github.com/anish-karnik/distributed-kv-store/proto;kvstore";
+
+service KeyValueStore {
+  rpc Put(PutRequest) returns (PutResponse);
+  rpc Get(GetRequest) returns (GetResponse);
+  rpc Heartbeat(Empty) returns (Empty);
+  rpc Replicate(ReplicateRequest) returns (Empty);
+  rpc UpdateLeader(UpdateLeaderRequest) returns (Empty);
+}
+
+message PutRequest {
+  string key = 1;
+  string value = 2;
+}
+
+message PutResponse {
+  bool success = 1;
+}
+
+message GetRequest {
+  string key = 1;
+}
+
+message GetResponse {
+  string value = 1;
+  bool found = 2;
+}
+
+message Empty {}
+
+message LeaderResponse {
+  string leaderIp = 1;
+}
+
+message ReplicateRequest {
+  string key = 1;
+  string value = 2;
+}
+
+// New message for leader update.
+message UpdateLeaderRequest {
+  string leaderIp = 1;
+}

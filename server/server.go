@@ -1,0 +1,259 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net"
+	"os"
+	"sort"
+	"sync"
+	"time"
+
+	pb "github.com/anish-karnik/distributed-kv-store/proto"
+	"google.golang.org/grpc"
+)
+
+type server struct {
+	pb.UnimplementedKeyValueStoreServer
+	mu                sync.Mutex
+	store             map[string]string
+	peers             []string
+	selfIp            string
+	leaderIp          string
+	lastHeartbeatTime time.Time
+}
+
+func NewServer(ip string, peers []string) *server {
+	return &server{
+		store:  make(map[string]string),
+		peers:  peers,
+		selfIp: ip,
+
+		lastHeartbeatTime: time.Now(),
+	}
+}
+
+func isReachable(addr string) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpc.WithBlock())
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
+}
+
+func (s *server) electLeader() string {
+	available := []string{}
+
+	if isReachable(s.selfIp) {
+		available = append(available, s.selfIp)
+	}
+
+	for _, peer := range s.peers {
+		if peer == s.selfIp {
+			continue
+		}
+		if isReachable(peer) {
+			available = append(available, peer)
+		}
+	}
+
+	if len(available) == 0 {
+		log.Fatal("No available servers for leader election!")
+	}
+
+	sort.Strings(available)
+	newLeader := available[len(available)-1]
+	return newLeader
+}
+
+func (s *server) notifyPeers(newLeader string) {
+	for _, peer := range s.peers {
+		if peer == s.selfIp {
+			continue
+		}
+
+		if !isReachable(peer) {
+			continue
+		}
+		conn, err := grpc.Dial(peer, grpc.WithInsecure())
+		if err != nil {
+			log.Printf("Warning: cannot connect to %s to update leader: %v", peer, err)
+			continue
+		}
+		client := pb.NewKeyValueStoreClient(conn)
+		_, err = client.UpdateLeader(context.Background(), &pb.UpdateLeaderRequest{LeaderIp: newLeader})
+		if err != nil {
+			log.Printf("Warning: cannot update leader on %s: %v", peer, err)
+		}
+		conn.Close()
+	}
+}
+
+func (s *server) UpdateLeader(ctx context.Context, req *pb.UpdateLeaderRequest) (*pb.Empty, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.leaderIp = req.LeaderIp
+	log.Printf("Leader updated to %s", s.leaderIp)
+	return &pb.Empty{}, nil
+}
+
+func (s *server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	value, found := s.store[req.Key]
+	return &pb.GetResponse{Value: value, Found: found}, nil
+}
+
+func (s *server) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error) {
+	if s.selfIp != s.leaderIp {
+		conn, err := grpc.Dial(s.leaderIp, grpc.WithInsecure())
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
+		client := pb.NewKeyValueStoreClient(conn)
+		return client.Put(ctx, req)
+	}
+
+	s.mu.Lock()
+	log.Printf("Put: %s -> %s", req.Key, req.Value)
+	s.store[req.Key] = req.Value
+	s.mu.Unlock()
+
+	for _, peer := range s.peers {
+		if peer == s.selfIp {
+			continue
+		}
+
+		if !isReachable(peer) {
+			log.Printf("Skipping replication to %s (not reachable)", peer)
+			continue
+		}
+		conn, err := grpc.Dial(peer, grpc.WithInsecure())
+		if err != nil {
+			log.Printf("Warning: unable to replicate to %s: %v", peer, err)
+			continue
+		}
+		log.Printf("Replicating to %s", peer)
+		client := pb.NewKeyValueStoreClient(conn)
+		_, err = client.Replicate(ctx, &pb.ReplicateRequest{Key: req.Key, Value: req.Value})
+		if err != nil {
+			log.Printf("Warning: replication error to %s: %v", peer, err)
+		}
+		conn.Close()
+	}
+	return &pb.PutResponse{Success: true}, nil
+}
+
+func (s *server) Replicate(ctx context.Context, req *pb.ReplicateRequest) (*pb.Empty, error) {
+	s.mu.Lock()
+	s.store[req.Key] = req.Value
+	s.mu.Unlock()
+	return &pb.Empty{}, nil
+}
+
+func (s *server) Heartbeat(ctx context.Context, req *pb.Empty) (*pb.Empty, error) {
+	s.mu.Lock()
+	s.lastHeartbeatTime = time.Now()
+	s.mu.Unlock()
+	return &pb.Empty{}, nil
+}
+
+func (s *server) SendandReceiveHeartbeat() {
+
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		s.mu.Lock()
+		currentLeader := s.leaderIp
+		selfIp := s.selfIp
+		lastHB := s.lastHeartbeatTime
+		s.mu.Unlock()
+
+		if selfIp == currentLeader {
+			for _, peer := range s.peers {
+				if peer == selfIp {
+					continue
+				}
+				if !isReachable(peer) {
+					continue
+				}
+				conn, err := grpc.Dial(peer, grpc.WithInsecure())
+				if err != nil {
+					log.Printf("Warning: cannot connect to %s for heartbeat: %v", peer, err)
+					continue
+				}
+				client := pb.NewKeyValueStoreClient(conn)
+				_, err = client.Heartbeat(context.Background(), &pb.Empty{})
+				if err != nil {
+					log.Printf("Warning: heartbeat failed to %s: %v", peer, err)
+				}
+				conn.Close()
+			}
+		} else {
+
+			elapsed := time.Since(lastHB)
+			log.Printf("Time elapsed since last heartbeat from leader (%s): %v", currentLeader, elapsed)
+
+			if elapsed > 8*time.Second {
+				newLeader := s.electLeader()
+				s.mu.Lock()
+				s.leaderIp = newLeader
+				s.lastHeartbeatTime = time.Now()
+				s.mu.Unlock()
+				log.Printf("Leader elected: %s", newLeader)
+
+				if newLeader == selfIp {
+					s.notifyPeers(newLeader)
+				}
+			}
+		}
+	}
+}
+
+func main() {
+	if len(os.Args) < 3 {
+		log.Fatalf("Usage: server <self-ip> <peer1> <peer2> ...")
+	}
+
+	selfIp := os.Args[1]
+	peers := os.Args[2:]
+
+	// Start listening first.
+	lis, err := net.Listen("tcp", selfIp)
+	if err != nil {
+		log.Fatalf("Failed to listen: %v", err)
+	}
+
+	grpcServer := grpc.NewServer()
+	srv := NewServer(selfIp, peers)
+	pb.RegisterKeyValueStoreServer(grpcServer, srv)
+
+	go func() {
+		fmt.Printf("Server listening at %s\n", selfIp)
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("Failed to serve: %v", err)
+		}
+	}()
+
+	time.Sleep(1 * time.Second)
+
+	newLeader := srv.electLeader()
+	srv.mu.Lock()
+	srv.leaderIp = newLeader
+	srv.mu.Unlock()
+	log.Printf("Leader elected: %s", newLeader)
+
+	if srv.selfIp == newLeader {
+		srv.notifyPeers(newLeader)
+	}
+
+	go srv.SendandReceiveHeartbeat()
+
+	select {}
+}
