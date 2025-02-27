@@ -4,7 +4,7 @@
 // - protoc             v3.12.4
 // source: proto/kvstore.proto
 
-package kvstore
+package proto
 
 import (
 	context "context"
@@ -19,14 +19,15 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	KeyValueStore_Put_FullMethodName            = "/kvstore.KeyValueStore/Put"
-	KeyValueStore_Get_FullMethodName            = "/kvstore.KeyValueStore/Get"
-	KeyValueStore_Heartbeat_FullMethodName      = "/kvstore.KeyValueStore/Heartbeat"
-	KeyValueStore_Replicate_FullMethodName      = "/kvstore.KeyValueStore/Replicate"
-	KeyValueStore_UpdateLeader_FullMethodName   = "/kvstore.KeyValueStore/UpdateLeader"
-	KeyValueStore_GetMinLogIndex_FullMethodName = "/kvstore.KeyValueStore/GetMinLogIndex"
-	KeyValueStore_ClearLogs_FullMethodName      = "/kvstore.KeyValueStore/ClearLogs"
-	KeyValueStore_LogCommit_FullMethodName      = "/kvstore.KeyValueStore/LogCommit"
+	KeyValueStore_Put_FullMethodName             = "/kvstore.KeyValueStore/Put"
+	KeyValueStore_Get_FullMethodName             = "/kvstore.KeyValueStore/Get"
+	KeyValueStore_Heartbeat_FullMethodName       = "/kvstore.KeyValueStore/Heartbeat"
+	KeyValueStore_Replicate_FullMethodName       = "/kvstore.KeyValueStore/Replicate"
+	KeyValueStore_UpdateLeader_FullMethodName    = "/kvstore.KeyValueStore/UpdateLeader"
+	KeyValueStore_GetLogIndex_FullMethodName     = "/kvstore.KeyValueStore/GetLogIndex"
+	KeyValueStore_SendMinLogIndex_FullMethodName = "/kvstore.KeyValueStore/SendMinLogIndex"
+	KeyValueStore_ClearLogs_FullMethodName       = "/kvstore.KeyValueStore/ClearLogs"
+	KeyValueStore_LogCommit_FullMethodName       = "/kvstore.KeyValueStore/LogCommit"
 )
 
 // KeyValueStoreClient is the client API for KeyValueStore service.
@@ -38,7 +39,8 @@ type KeyValueStoreClient interface {
 	Heartbeat(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
 	Replicate(ctx context.Context, in *ReplicateRequest, opts ...grpc.CallOption) (*Empty, error)
 	UpdateLeader(ctx context.Context, in *UpdateLeaderRequest, opts ...grpc.CallOption) (*Empty, error)
-	GetMinLogIndex(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*MinLogIndexResponse, error)
+	GetLogIndex(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*LogIndexResponse, error)
+	SendMinLogIndex(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*MinLogIndexResponse, error)
 	ClearLogs(ctx context.Context, in *ClearFromNum, opts ...grpc.CallOption) (*Empty, error)
 	LogCommit(ctx context.Context, in *LogCommitRequest, opts ...grpc.CallOption) (*LogCommitResponse, error)
 }
@@ -101,10 +103,20 @@ func (c *keyValueStoreClient) UpdateLeader(ctx context.Context, in *UpdateLeader
 	return out, nil
 }
 
-func (c *keyValueStoreClient) GetMinLogIndex(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*MinLogIndexResponse, error) {
+func (c *keyValueStoreClient) GetLogIndex(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*LogIndexResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LogIndexResponse)
+	err := c.cc.Invoke(ctx, KeyValueStore_GetLogIndex_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *keyValueStoreClient) SendMinLogIndex(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*MinLogIndexResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MinLogIndexResponse)
-	err := c.cc.Invoke(ctx, KeyValueStore_GetMinLogIndex_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, KeyValueStore_SendMinLogIndex_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +152,8 @@ type KeyValueStoreServer interface {
 	Heartbeat(context.Context, *Empty) (*Empty, error)
 	Replicate(context.Context, *ReplicateRequest) (*Empty, error)
 	UpdateLeader(context.Context, *UpdateLeaderRequest) (*Empty, error)
-	GetMinLogIndex(context.Context, *Empty) (*MinLogIndexResponse, error)
+	GetLogIndex(context.Context, *Empty) (*LogIndexResponse, error)
+	SendMinLogIndex(context.Context, *Empty) (*MinLogIndexResponse, error)
 	ClearLogs(context.Context, *ClearFromNum) (*Empty, error)
 	LogCommit(context.Context, *LogCommitRequest) (*LogCommitResponse, error)
 	mustEmbedUnimplementedKeyValueStoreServer()
@@ -168,8 +181,11 @@ func (UnimplementedKeyValueStoreServer) Replicate(context.Context, *ReplicateReq
 func (UnimplementedKeyValueStoreServer) UpdateLeader(context.Context, *UpdateLeaderRequest) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateLeader not implemented")
 }
-func (UnimplementedKeyValueStoreServer) GetMinLogIndex(context.Context, *Empty) (*MinLogIndexResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetMinLogIndex not implemented")
+func (UnimplementedKeyValueStoreServer) GetLogIndex(context.Context, *Empty) (*LogIndexResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetLogIndex not implemented")
+}
+func (UnimplementedKeyValueStoreServer) SendMinLogIndex(context.Context, *Empty) (*MinLogIndexResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendMinLogIndex not implemented")
 }
 func (UnimplementedKeyValueStoreServer) ClearLogs(context.Context, *ClearFromNum) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClearLogs not implemented")
@@ -288,20 +304,38 @@ func _KeyValueStore_UpdateLeader_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyValueStore_GetMinLogIndex_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _KeyValueStore_GetLogIndex_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyValueStoreServer).GetMinLogIndex(ctx, in)
+		return srv.(KeyValueStoreServer).GetLogIndex(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: KeyValueStore_GetMinLogIndex_FullMethodName,
+		FullMethod: KeyValueStore_GetLogIndex_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyValueStoreServer).GetMinLogIndex(ctx, req.(*Empty))
+		return srv.(KeyValueStoreServer).GetLogIndex(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KeyValueStore_SendMinLogIndex_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyValueStoreServer).SendMinLogIndex(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KeyValueStore_SendMinLogIndex_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyValueStoreServer).SendMinLogIndex(ctx, req.(*Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -370,8 +404,12 @@ var KeyValueStore_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _KeyValueStore_UpdateLeader_Handler,
 		},
 		{
-			MethodName: "GetMinLogIndex",
-			Handler:    _KeyValueStore_GetMinLogIndex_Handler,
+			MethodName: "GetLogIndex",
+			Handler:    _KeyValueStore_GetLogIndex_Handler,
+		},
+		{
+			MethodName: "SendMinLogIndex",
+			Handler:    _KeyValueStore_SendMinLogIndex_Handler,
 		},
 		{
 			MethodName: "ClearLogs",

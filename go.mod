@@ -1,4 +1,4 @@
-module github.com/anish-karnik/distributed-kv-store
+module distributed-key-value-store
 
 go 1.24.0
 

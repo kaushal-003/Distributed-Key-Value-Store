@@ -4,7 +4,7 @@
 // 	protoc        v3.12.4
 // source: proto/kvstore.proto
 
-package kvstore
+package proto
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -21,6 +21,94 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type LogIndexResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	LogIndex      int32                  `protobuf:"varint,1,opt,name=logIndex,proto3" json:"logIndex,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LogIndexResponse) Reset() {
+	*x = LogIndexResponse{}
+	mi := &file_proto_kvstore_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LogIndexResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LogIndexResponse) ProtoMessage() {}
+
+func (x *LogIndexResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_kvstore_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LogIndexResponse.ProtoReflect.Descriptor instead.
+func (*LogIndexResponse) Descriptor() ([]byte, []int) {
+	return file_proto_kvstore_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *LogIndexResponse) GetLogIndex() int32 {
+	if x != nil {
+		return x.LogIndex
+	}
+	return 0
+}
+
+type MinLogIndexResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MinLogIndex   int32                  `protobuf:"varint,1,opt,name=minLogIndex,proto3" json:"minLogIndex,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MinLogIndexResponse) Reset() {
+	*x = MinLogIndexResponse{}
+	mi := &file_proto_kvstore_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MinLogIndexResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MinLogIndexResponse) ProtoMessage() {}
+
+func (x *MinLogIndexResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_kvstore_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MinLogIndexResponse.ProtoReflect.Descriptor instead.
+func (*MinLogIndexResponse) Descriptor() ([]byte, []int) {
+	return file_proto_kvstore_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *MinLogIndexResponse) GetMinLogIndex() int32 {
+	if x != nil {
+		return x.MinLogIndex
+	}
+	return 0
+}
+
 type LogCommitRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
@@ -32,7 +120,7 @@ type LogCommitRequest struct {
 
 func (x *LogCommitRequest) Reset() {
 	*x = LogCommitRequest{}
-	mi := &file_proto_kvstore_proto_msgTypes[0]
+	mi := &file_proto_kvstore_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -44,7 +132,7 @@ func (x *LogCommitRequest) String() string {
 func (*LogCommitRequest) ProtoMessage() {}
 
 func (x *LogCommitRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kvstore_proto_msgTypes[0]
+	mi := &file_proto_kvstore_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -57,7 +145,7 @@ func (x *LogCommitRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogCommitRequest.ProtoReflect.Descriptor instead.
 func (*LogCommitRequest) Descriptor() ([]byte, []int) {
-	return file_proto_kvstore_proto_rawDescGZIP(), []int{0}
+	return file_proto_kvstore_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *LogCommitRequest) GetKey() string {
@@ -90,7 +178,7 @@ type LogCommitResponse struct {
 
 func (x *LogCommitResponse) Reset() {
 	*x = LogCommitResponse{}
-	mi := &file_proto_kvstore_proto_msgTypes[1]
+	mi := &file_proto_kvstore_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -102,7 +190,7 @@ func (x *LogCommitResponse) String() string {
 func (*LogCommitResponse) ProtoMessage() {}
 
 func (x *LogCommitResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kvstore_proto_msgTypes[1]
+	mi := &file_proto_kvstore_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -115,7 +203,7 @@ func (x *LogCommitResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogCommitResponse.ProtoReflect.Descriptor instead.
 func (*LogCommitResponse) Descriptor() ([]byte, []int) {
-	return file_proto_kvstore_proto_rawDescGZIP(), []int{1}
+	return file_proto_kvstore_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *LogCommitResponse) GetSuccess() bool {
@@ -134,7 +222,7 @@ type ClearFromNum struct {
 
 func (x *ClearFromNum) Reset() {
 	*x = ClearFromNum{}
-	mi := &file_proto_kvstore_proto_msgTypes[2]
+	mi := &file_proto_kvstore_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -146,7 +234,7 @@ func (x *ClearFromNum) String() string {
 func (*ClearFromNum) ProtoMessage() {}
 
 func (x *ClearFromNum) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kvstore_proto_msgTypes[2]
+	mi := &file_proto_kvstore_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -159,56 +247,12 @@ func (x *ClearFromNum) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClearFromNum.ProtoReflect.Descriptor instead.
 func (*ClearFromNum) Descriptor() ([]byte, []int) {
-	return file_proto_kvstore_proto_rawDescGZIP(), []int{2}
+	return file_proto_kvstore_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ClearFromNum) GetFromNum() int32 {
 	if x != nil {
 		return x.FromNum
-	}
-	return 0
-}
-
-type MinLogIndexResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MinLogIndex   int32                  `protobuf:"varint,1,opt,name=minLogIndex,proto3" json:"minLogIndex,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *MinLogIndexResponse) Reset() {
-	*x = MinLogIndexResponse{}
-	mi := &file_proto_kvstore_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *MinLogIndexResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*MinLogIndexResponse) ProtoMessage() {}
-
-func (x *MinLogIndexResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kvstore_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use MinLogIndexResponse.ProtoReflect.Descriptor instead.
-func (*MinLogIndexResponse) Descriptor() ([]byte, []int) {
-	return file_proto_kvstore_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *MinLogIndexResponse) GetMinLogIndex() int32 {
-	if x != nil {
-		return x.MinLogIndex
 	}
 	return 0
 }
@@ -223,7 +267,7 @@ type PutRequest struct {
 
 func (x *PutRequest) Reset() {
 	*x = PutRequest{}
-	mi := &file_proto_kvstore_proto_msgTypes[4]
+	mi := &file_proto_kvstore_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -235,7 +279,7 @@ func (x *PutRequest) String() string {
 func (*PutRequest) ProtoMessage() {}
 
 func (x *PutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kvstore_proto_msgTypes[4]
+	mi := &file_proto_kvstore_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -248,7 +292,7 @@ func (x *PutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutRequest.ProtoReflect.Descriptor instead.
 func (*PutRequest) Descriptor() ([]byte, []int) {
-	return file_proto_kvstore_proto_rawDescGZIP(), []int{4}
+	return file_proto_kvstore_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *PutRequest) GetKey() string {
@@ -274,7 +318,7 @@ type PutResponse struct {
 
 func (x *PutResponse) Reset() {
 	*x = PutResponse{}
-	mi := &file_proto_kvstore_proto_msgTypes[5]
+	mi := &file_proto_kvstore_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -286,7 +330,7 @@ func (x *PutResponse) String() string {
 func (*PutResponse) ProtoMessage() {}
 
 func (x *PutResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kvstore_proto_msgTypes[5]
+	mi := &file_proto_kvstore_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -299,7 +343,7 @@ func (x *PutResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutResponse.ProtoReflect.Descriptor instead.
 func (*PutResponse) Descriptor() ([]byte, []int) {
-	return file_proto_kvstore_proto_rawDescGZIP(), []int{5}
+	return file_proto_kvstore_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *PutResponse) GetSuccess() bool {
@@ -318,7 +362,7 @@ type GetRequest struct {
 
 func (x *GetRequest) Reset() {
 	*x = GetRequest{}
-	mi := &file_proto_kvstore_proto_msgTypes[6]
+	mi := &file_proto_kvstore_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -330,7 +374,7 @@ func (x *GetRequest) String() string {
 func (*GetRequest) ProtoMessage() {}
 
 func (x *GetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kvstore_proto_msgTypes[6]
+	mi := &file_proto_kvstore_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -343,7 +387,7 @@ func (x *GetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRequest.ProtoReflect.Descriptor instead.
 func (*GetRequest) Descriptor() ([]byte, []int) {
-	return file_proto_kvstore_proto_rawDescGZIP(), []int{6}
+	return file_proto_kvstore_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetRequest) GetKey() string {
@@ -363,7 +407,7 @@ type GetResponse struct {
 
 func (x *GetResponse) Reset() {
 	*x = GetResponse{}
-	mi := &file_proto_kvstore_proto_msgTypes[7]
+	mi := &file_proto_kvstore_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -375,7 +419,7 @@ func (x *GetResponse) String() string {
 func (*GetResponse) ProtoMessage() {}
 
 func (x *GetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kvstore_proto_msgTypes[7]
+	mi := &file_proto_kvstore_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -388,7 +432,7 @@ func (x *GetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetResponse.ProtoReflect.Descriptor instead.
 func (*GetResponse) Descriptor() ([]byte, []int) {
-	return file_proto_kvstore_proto_rawDescGZIP(), []int{7}
+	return file_proto_kvstore_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetResponse) GetValue() string {
@@ -413,7 +457,7 @@ type Empty struct {
 
 func (x *Empty) Reset() {
 	*x = Empty{}
-	mi := &file_proto_kvstore_proto_msgTypes[8]
+	mi := &file_proto_kvstore_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -425,7 +469,7 @@ func (x *Empty) String() string {
 func (*Empty) ProtoMessage() {}
 
 func (x *Empty) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kvstore_proto_msgTypes[8]
+	mi := &file_proto_kvstore_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -438,7 +482,7 @@ func (x *Empty) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Empty.ProtoReflect.Descriptor instead.
 func (*Empty) Descriptor() ([]byte, []int) {
-	return file_proto_kvstore_proto_rawDescGZIP(), []int{8}
+	return file_proto_kvstore_proto_rawDescGZIP(), []int{9}
 }
 
 type LeaderResponse struct {
@@ -450,7 +494,7 @@ type LeaderResponse struct {
 
 func (x *LeaderResponse) Reset() {
 	*x = LeaderResponse{}
-	mi := &file_proto_kvstore_proto_msgTypes[9]
+	mi := &file_proto_kvstore_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -462,7 +506,7 @@ func (x *LeaderResponse) String() string {
 func (*LeaderResponse) ProtoMessage() {}
 
 func (x *LeaderResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kvstore_proto_msgTypes[9]
+	mi := &file_proto_kvstore_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -475,7 +519,7 @@ func (x *LeaderResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LeaderResponse.ProtoReflect.Descriptor instead.
 func (*LeaderResponse) Descriptor() ([]byte, []int) {
-	return file_proto_kvstore_proto_rawDescGZIP(), []int{9}
+	return file_proto_kvstore_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *LeaderResponse) GetLeaderIp() string {
@@ -495,7 +539,7 @@ type ReplicateRequest struct {
 
 func (x *ReplicateRequest) Reset() {
 	*x = ReplicateRequest{}
-	mi := &file_proto_kvstore_proto_msgTypes[10]
+	mi := &file_proto_kvstore_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -507,7 +551,7 @@ func (x *ReplicateRequest) String() string {
 func (*ReplicateRequest) ProtoMessage() {}
 
 func (x *ReplicateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kvstore_proto_msgTypes[10]
+	mi := &file_proto_kvstore_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -520,7 +564,7 @@ func (x *ReplicateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplicateRequest.ProtoReflect.Descriptor instead.
 func (*ReplicateRequest) Descriptor() ([]byte, []int) {
-	return file_proto_kvstore_proto_rawDescGZIP(), []int{10}
+	return file_proto_kvstore_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ReplicateRequest) GetKey() string {
@@ -547,7 +591,7 @@ type UpdateLeaderRequest struct {
 
 func (x *UpdateLeaderRequest) Reset() {
 	*x = UpdateLeaderRequest{}
-	mi := &file_proto_kvstore_proto_msgTypes[11]
+	mi := &file_proto_kvstore_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -559,7 +603,7 @@ func (x *UpdateLeaderRequest) String() string {
 func (*UpdateLeaderRequest) ProtoMessage() {}
 
 func (x *UpdateLeaderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kvstore_proto_msgTypes[11]
+	mi := &file_proto_kvstore_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -572,7 +616,7 @@ func (x *UpdateLeaderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateLeaderRequest.ProtoReflect.Descriptor instead.
 func (*UpdateLeaderRequest) Descriptor() ([]byte, []int) {
-	return file_proto_kvstore_proto_rawDescGZIP(), []int{11}
+	return file_proto_kvstore_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *UpdateLeaderRequest) GetLeaderIp() string {
@@ -586,22 +630,25 @@ var File_proto_kvstore_proto protoreflect.FileDescriptor
 
 var file_proto_kvstore_proto_rawDesc = string([]byte{
 	0x0a, 0x13, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x6b, 0x76, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x2e,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x07, 0x6b, 0x76, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x22, 0x56,
-	0x0a, 0x10, 0x4c, 0x6f, 0x67, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x1a, 0x0a, 0x08, 0x6c, 0x6f,
-	0x67, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x18, 0x03, 0x20, 0x01, 0x28, 0x05, 0x52, 0x08, 0x6c, 0x6f,
-	0x67, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x22, 0x2d, 0x0a, 0x11, 0x4c, 0x6f, 0x67, 0x43, 0x6f, 0x6d,
-	0x6d, 0x69, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x73,
-	0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x08, 0x52, 0x07, 0x73, 0x75,
-	0x63, 0x63, 0x65, 0x73, 0x73, 0x22, 0x28, 0x0a, 0x0c, 0x43, 0x6c, 0x65, 0x61, 0x72, 0x46, 0x72,
-	0x6f, 0x6d, 0x4e, 0x75, 0x6d, 0x12, 0x18, 0x0a, 0x07, 0x66, 0x72, 0x6f, 0x6d, 0x4e, 0x75, 0x6d,
-	0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x07, 0x66, 0x72, 0x6f, 0x6d, 0x4e, 0x75, 0x6d, 0x22,
-	0x37, 0x0a, 0x13, 0x4d, 0x69, 0x6e, 0x4c, 0x6f, 0x67, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x52, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x20, 0x0a, 0x0b, 0x6d, 0x69, 0x6e, 0x4c, 0x6f, 0x67,
-	0x49, 0x6e, 0x64, 0x65, 0x78, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x0b, 0x6d, 0x69, 0x6e,
-	0x4c, 0x6f, 0x67, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x22, 0x34, 0x0a, 0x0a, 0x50, 0x75, 0x74, 0x52,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x07, 0x6b, 0x76, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x22, 0x2e,
+	0x0a, 0x10, 0x4c, 0x6f, 0x67, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x12, 0x1a, 0x0a, 0x08, 0x6c, 0x6f, 0x67, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x05, 0x52, 0x08, 0x6c, 0x6f, 0x67, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x22, 0x37,
+	0x0a, 0x13, 0x4d, 0x69, 0x6e, 0x4c, 0x6f, 0x67, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x20, 0x0a, 0x0b, 0x6d, 0x69, 0x6e, 0x4c, 0x6f, 0x67, 0x49,
+	0x6e, 0x64, 0x65, 0x78, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x0b, 0x6d, 0x69, 0x6e, 0x4c,
+	0x6f, 0x67, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x22, 0x56, 0x0a, 0x10, 0x4c, 0x6f, 0x67, 0x43, 0x6f,
+	0x6d, 0x6d, 0x69, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b,
+	0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a,
+	0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61,
+	0x6c, 0x75, 0x65, 0x12, 0x1a, 0x0a, 0x08, 0x6c, 0x6f, 0x67, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x18,
+	0x03, 0x20, 0x01, 0x28, 0x05, 0x52, 0x08, 0x6c, 0x6f, 0x67, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x22,
+	0x2d, 0x0a, 0x11, 0x4c, 0x6f, 0x67, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x08, 0x52, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x22, 0x28,
+	0x0a, 0x0c, 0x43, 0x6c, 0x65, 0x61, 0x72, 0x46, 0x72, 0x6f, 0x6d, 0x4e, 0x75, 0x6d, 0x12, 0x18,
+	0x0a, 0x07, 0x66, 0x72, 0x6f, 0x6d, 0x4e, 0x75, 0x6d, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52,
+	0x07, 0x66, 0x72, 0x6f, 0x6d, 0x4e, 0x75, 0x6d, 0x22, 0x34, 0x0a, 0x0a, 0x50, 0x75, 0x74, 0x52,
 	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20,
 	0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75,
 	0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0x27,
@@ -623,7 +670,7 @@ var file_proto_kvstore_proto_rawDesc = string([]byte{
 	0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0x31, 0x0a, 0x13, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4c,
 	0x65, 0x61, 0x64, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1a, 0x0a, 0x08,
 	0x6c, 0x65, 0x61, 0x64, 0x65, 0x72, 0x49, 0x70, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08,
-	0x6c, 0x65, 0x61, 0x64, 0x65, 0x72, 0x49, 0x70, 0x32, 0xce, 0x03, 0x0a, 0x0d, 0x4b, 0x65, 0x79,
+	0x6c, 0x65, 0x61, 0x64, 0x65, 0x72, 0x49, 0x70, 0x32, 0x89, 0x04, 0x0a, 0x0d, 0x4b, 0x65, 0x79,
 	0x56, 0x61, 0x6c, 0x75, 0x65, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x12, 0x30, 0x0a, 0x03, 0x50, 0x75,
 	0x74, 0x12, 0x13, 0x2e, 0x6b, 0x76, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x2e, 0x50, 0x75, 0x74, 0x52,
 	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x14, 0x2e, 0x6b, 0x76, 0x73, 0x74, 0x6f, 0x72, 0x65,
@@ -641,22 +688,26 @@ var file_proto_kvstore_proto_rawDesc = string([]byte{
 	0x64, 0x65, 0x72, 0x12, 0x1c, 0x2e, 0x6b, 0x76, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x2e, 0x55, 0x70,
 	0x64, 0x61, 0x74, 0x65, 0x4c, 0x65, 0x61, 0x64, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
 	0x74, 0x1a, 0x0e, 0x2e, 0x6b, 0x76, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x2e, 0x45, 0x6d, 0x70, 0x74,
-	0x79, 0x12, 0x3e, 0x0a, 0x0e, 0x47, 0x65, 0x74, 0x4d, 0x69, 0x6e, 0x4c, 0x6f, 0x67, 0x49, 0x6e,
-	0x64, 0x65, 0x78, 0x12, 0x0e, 0x2e, 0x6b, 0x76, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x2e, 0x45, 0x6d,
-	0x70, 0x74, 0x79, 0x1a, 0x1c, 0x2e, 0x6b, 0x76, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x2e, 0x4d, 0x69,
-	0x6e, 0x4c, 0x6f, 0x67, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x12, 0x32, 0x0a, 0x09, 0x43, 0x6c, 0x65, 0x61, 0x72, 0x4c, 0x6f, 0x67, 0x73, 0x12, 0x15,
-	0x2e, 0x6b, 0x76, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x2e, 0x43, 0x6c, 0x65, 0x61, 0x72, 0x46, 0x72,
-	0x6f, 0x6d, 0x4e, 0x75, 0x6d, 0x1a, 0x0e, 0x2e, 0x6b, 0x76, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x2e,
-	0x45, 0x6d, 0x70, 0x74, 0x79, 0x12, 0x42, 0x0a, 0x09, 0x4c, 0x6f, 0x67, 0x43, 0x6f, 0x6d, 0x6d,
-	0x69, 0x74, 0x12, 0x19, 0x2e, 0x6b, 0x76, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x2e, 0x4c, 0x6f, 0x67,
-	0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1a, 0x2e,
+	0x79, 0x12, 0x38, 0x0a, 0x0b, 0x47, 0x65, 0x74, 0x4c, 0x6f, 0x67, 0x49, 0x6e, 0x64, 0x65, 0x78,
+	0x12, 0x0e, 0x2e, 0x6b, 0x76, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79,
+	0x1a, 0x19, 0x2e, 0x6b, 0x76, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x2e, 0x4c, 0x6f, 0x67, 0x49, 0x6e,
+	0x64, 0x65, 0x78, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x3f, 0x0a, 0x0f, 0x53,
+	0x65, 0x6e, 0x64, 0x4d, 0x69, 0x6e, 0x4c, 0x6f, 0x67, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x12, 0x0e,
+	0x2e, 0x6b, 0x76, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x1a, 0x1c,
+	0x2e, 0x6b, 0x76, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x2e, 0x4d, 0x69, 0x6e, 0x4c, 0x6f, 0x67, 0x49,
+	0x6e, 0x64, 0x65, 0x78, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x32, 0x0a, 0x09,
+	0x43, 0x6c, 0x65, 0x61, 0x72, 0x4c, 0x6f, 0x67, 0x73, 0x12, 0x15, 0x2e, 0x6b, 0x76, 0x73, 0x74,
+	0x6f, 0x72, 0x65, 0x2e, 0x43, 0x6c, 0x65, 0x61, 0x72, 0x46, 0x72, 0x6f, 0x6d, 0x4e, 0x75, 0x6d,
+	0x1a, 0x0e, 0x2e, 0x6b, 0x76, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79,
+	0x12, 0x42, 0x0a, 0x09, 0x4c, 0x6f, 0x67, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x12, 0x19, 0x2e,
 	0x6b, 0x76, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x2e, 0x4c, 0x6f, 0x67, 0x43, 0x6f, 0x6d, 0x6d, 0x69,
-	0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x3c, 0x5a, 0x3a, 0x67, 0x69, 0x74,
-	0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x61, 0x6e, 0x69, 0x73, 0x68, 0x2d, 0x6b, 0x61,
-	0x72, 0x6e, 0x69, 0x6b, 0x2f, 0x64, 0x69, 0x73, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x64,
-	0x2d, 0x6b, 0x76, 0x2d, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x3b,
-	0x6b, 0x76, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1a, 0x2e, 0x6b, 0x76, 0x73, 0x74, 0x6f,
+	0x72, 0x65, 0x2e, 0x4c, 0x6f, 0x67, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x42, 0x34, 0x5a, 0x32, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
+	0x6f, 0x6d, 0x2f, 0x61, 0x6e, 0x69, 0x73, 0x68, 0x2d, 0x6b, 0x61, 0x72, 0x6e, 0x69, 0x6b, 0x2f,
+	0x64, 0x69, 0x73, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x64, 0x2d, 0x6b, 0x76, 0x2d, 0x73,
+	0x74, 0x6f, 0x72, 0x65, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x33,
 })
 
 var (
@@ -671,40 +722,43 @@ func file_proto_kvstore_proto_rawDescGZIP() []byte {
 	return file_proto_kvstore_proto_rawDescData
 }
 
-var file_proto_kvstore_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_proto_kvstore_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_proto_kvstore_proto_goTypes = []any{
-	(*LogCommitRequest)(nil),    // 0: kvstore.LogCommitRequest
-	(*LogCommitResponse)(nil),   // 1: kvstore.LogCommitResponse
-	(*ClearFromNum)(nil),        // 2: kvstore.ClearFromNum
-	(*MinLogIndexResponse)(nil), // 3: kvstore.MinLogIndexResponse
-	(*PutRequest)(nil),          // 4: kvstore.PutRequest
-	(*PutResponse)(nil),         // 5: kvstore.PutResponse
-	(*GetRequest)(nil),          // 6: kvstore.GetRequest
-	(*GetResponse)(nil),         // 7: kvstore.GetResponse
-	(*Empty)(nil),               // 8: kvstore.Empty
-	(*LeaderResponse)(nil),      // 9: kvstore.LeaderResponse
-	(*ReplicateRequest)(nil),    // 10: kvstore.ReplicateRequest
-	(*UpdateLeaderRequest)(nil), // 11: kvstore.UpdateLeaderRequest
+	(*LogIndexResponse)(nil),    // 0: kvstore.LogIndexResponse
+	(*MinLogIndexResponse)(nil), // 1: kvstore.MinLogIndexResponse
+	(*LogCommitRequest)(nil),    // 2: kvstore.LogCommitRequest
+	(*LogCommitResponse)(nil),   // 3: kvstore.LogCommitResponse
+	(*ClearFromNum)(nil),        // 4: kvstore.ClearFromNum
+	(*PutRequest)(nil),          // 5: kvstore.PutRequest
+	(*PutResponse)(nil),         // 6: kvstore.PutResponse
+	(*GetRequest)(nil),          // 7: kvstore.GetRequest
+	(*GetResponse)(nil),         // 8: kvstore.GetResponse
+	(*Empty)(nil),               // 9: kvstore.Empty
+	(*LeaderResponse)(nil),      // 10: kvstore.LeaderResponse
+	(*ReplicateRequest)(nil),    // 11: kvstore.ReplicateRequest
+	(*UpdateLeaderRequest)(nil), // 12: kvstore.UpdateLeaderRequest
 }
 var file_proto_kvstore_proto_depIdxs = []int32{
-	4,  // 0: kvstore.KeyValueStore.Put:input_type -> kvstore.PutRequest
-	6,  // 1: kvstore.KeyValueStore.Get:input_type -> kvstore.GetRequest
-	8,  // 2: kvstore.KeyValueStore.Heartbeat:input_type -> kvstore.Empty
-	10, // 3: kvstore.KeyValueStore.Replicate:input_type -> kvstore.ReplicateRequest
-	11, // 4: kvstore.KeyValueStore.UpdateLeader:input_type -> kvstore.UpdateLeaderRequest
-	8,  // 5: kvstore.KeyValueStore.GetMinLogIndex:input_type -> kvstore.Empty
-	2,  // 6: kvstore.KeyValueStore.ClearLogs:input_type -> kvstore.ClearFromNum
-	0,  // 7: kvstore.KeyValueStore.LogCommit:input_type -> kvstore.LogCommitRequest
-	5,  // 8: kvstore.KeyValueStore.Put:output_type -> kvstore.PutResponse
-	7,  // 9: kvstore.KeyValueStore.Get:output_type -> kvstore.GetResponse
-	8,  // 10: kvstore.KeyValueStore.Heartbeat:output_type -> kvstore.Empty
-	8,  // 11: kvstore.KeyValueStore.Replicate:output_type -> kvstore.Empty
-	8,  // 12: kvstore.KeyValueStore.UpdateLeader:output_type -> kvstore.Empty
-	3,  // 13: kvstore.KeyValueStore.GetMinLogIndex:output_type -> kvstore.MinLogIndexResponse
-	8,  // 14: kvstore.KeyValueStore.ClearLogs:output_type -> kvstore.Empty
-	1,  // 15: kvstore.KeyValueStore.LogCommit:output_type -> kvstore.LogCommitResponse
-	8,  // [8:16] is the sub-list for method output_type
-	0,  // [0:8] is the sub-list for method input_type
+	5,  // 0: kvstore.KeyValueStore.Put:input_type -> kvstore.PutRequest
+	7,  // 1: kvstore.KeyValueStore.Get:input_type -> kvstore.GetRequest
+	9,  // 2: kvstore.KeyValueStore.Heartbeat:input_type -> kvstore.Empty
+	11, // 3: kvstore.KeyValueStore.Replicate:input_type -> kvstore.ReplicateRequest
+	12, // 4: kvstore.KeyValueStore.UpdateLeader:input_type -> kvstore.UpdateLeaderRequest
+	9,  // 5: kvstore.KeyValueStore.GetLogIndex:input_type -> kvstore.Empty
+	9,  // 6: kvstore.KeyValueStore.SendMinLogIndex:input_type -> kvstore.Empty
+	4,  // 7: kvstore.KeyValueStore.ClearLogs:input_type -> kvstore.ClearFromNum
+	2,  // 8: kvstore.KeyValueStore.LogCommit:input_type -> kvstore.LogCommitRequest
+	6,  // 9: kvstore.KeyValueStore.Put:output_type -> kvstore.PutResponse
+	8,  // 10: kvstore.KeyValueStore.Get:output_type -> kvstore.GetResponse
+	9,  // 11: kvstore.KeyValueStore.Heartbeat:output_type -> kvstore.Empty
+	9,  // 12: kvstore.KeyValueStore.Replicate:output_type -> kvstore.Empty
+	9,  // 13: kvstore.KeyValueStore.UpdateLeader:output_type -> kvstore.Empty
+	0,  // 14: kvstore.KeyValueStore.GetLogIndex:output_type -> kvstore.LogIndexResponse
+	1,  // 15: kvstore.KeyValueStore.SendMinLogIndex:output_type -> kvstore.MinLogIndexResponse
+	9,  // 16: kvstore.KeyValueStore.ClearLogs:output_type -> kvstore.Empty
+	3,  // 17: kvstore.KeyValueStore.LogCommit:output_type -> kvstore.LogCommitResponse
+	9,  // [9:18] is the sub-list for method output_type
+	0,  // [0:9] is the sub-list for method input_type
 	0,  // [0:0] is the sub-list for extension type_name
 	0,  // [0:0] is the sub-list for extension extendee
 	0,  // [0:0] is the sub-list for field type_name
@@ -721,7 +775,7 @@ func file_proto_kvstore_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_kvstore_proto_rawDesc), len(file_proto_kvstore_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

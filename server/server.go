@@ -10,9 +10,16 @@ import (
 	"sync"
 	"time"
 
-	pb "github.com/anish-karnik/distributed-kv-store/proto"
+	pb "distributed-key-value-store/proto"
+
 	"google.golang.org/grpc"
 )
+
+type Log struct {
+	key   string
+	value string
+	index int32
+}
 
 type server struct {
 	pb.UnimplementedKeyValueStoreServer
@@ -22,6 +29,66 @@ type server struct {
 	selfIp            string
 	leaderIp          string
 	lastHeartbeatTime time.Time
+	logs              []Log
+	lastcommitedindex int32
+}
+
+func (s *server) GetLogIndex(ctx context.Context, req *pb.Empty) (*pb.LogIndexResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return &pb.LogIndexResponse{LogIndex: s.lastcommitedindex}, nil
+}
+
+func (s *server) ClearLogs(ctx context.Context, req *pb.ClearFromNum) (*pb.Empty, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.logs = s.logs[:req.FromNum]
+	return &pb.Empty{}, nil
+}
+
+func (s *server) SendMinLogIndex(ctx context.Context, req *pb.Empty) (*pb.MinLogIndexResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	// From all servers get the minimum log index
+	minIndex := s.lastcommitedindex
+	for _, peer := range s.peers {
+		if !isReachable(peer) {
+			continue
+		}
+		conn, err := grpc.Dial(peer, grpc.WithInsecure())
+		if err != nil {
+			log.Printf("Warning: cannot connect to %s for heartbeat: %v", peer, err)
+			continue
+		}
+		client := pb.NewKeyValueStoreClient(conn)
+		response, err := client.GetLogIndex(context.Background(), &pb.Empty{})
+		if err != nil {
+			log.Printf("Warning: heartbeat failed to %s: %v", peer, err)
+		}
+		if response.LogIndex < minIndex {
+			minIndex = response.LogIndex
+		}
+		conn.Close()
+	}
+
+	// Send the minimum log index to all servers
+	for _, peer := range s.peers {
+		if !isReachable(peer) {
+			continue
+		}
+		conn, err := grpc.Dial(peer, grpc.WithInsecure())
+		if err != nil {
+			log.Printf("Warning: cannot connect to %s for heartbeat: %v", peer, err)
+			continue
+		}
+		client := pb.NewKeyValueStoreClient(conn)
+		_, err = client.ClearLogs(context.Background(), &pb.ClearFromNum{FromNum: minIndex})
+		if err != nil {
+			log.Printf("Warning: heartbeat failed to %s: %v", peer, err)
+		}
+		conn.Close()
+	}
+	return &pb.MinLogIndexResponse{MinLogIndex: minIndex}, nil
 }
 
 func NewServer(ip string, peers []string) *server {

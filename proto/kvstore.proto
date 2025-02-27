@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package kvstore;
 
-option go_package = "github.com/anish-karnik/distributed-kv-store/proto;kvstore";
+option go_package = "../proto";
 
 service KeyValueStore {
   rpc Put(PutRequest) returns (PutResponse);
@@ -10,9 +10,19 @@ service KeyValueStore {
   rpc Heartbeat(Empty) returns (Empty);
   rpc Replicate(ReplicateRequest) returns (Empty);
   rpc UpdateLeader(UpdateLeaderRequest) returns (Empty);
-  rpc GetMinLogIndex(Empty) returns (MinLogIndexResponse);
+  rpc GetLogIndex(Empty) returns (LogIndexResponse); 
+  rpc SendMinLogIndex(Empty) returns (MinLogIndexResponse);
   rpc ClearLogs(ClearFromNum) returns (Empty);
   rpc LogCommit(LogCommitRequest) returns (LogCommitResponse);
+
+}
+
+message LogIndexResponse {
+  int32 logIndex = 1;
+}
+
+message MinLogIndexResponse {
+  int32 minLogIndex = 1;
 }
 
 message LogCommitRequest {
@@ -27,10 +37,6 @@ message LogCommitResponse {
 
 message ClearFromNum {
   int32 fromNum = 1;
-}
-
-message MinLogIndexResponse {
-  int32 minLogIndex = 1;
 }
 
 message PutRequest {
