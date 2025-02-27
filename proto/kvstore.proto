@@ -10,6 +10,27 @@ service KeyValueStore {
   rpc Heartbeat(Empty) returns (Empty);
   rpc Replicate(ReplicateRequest) returns (Empty);
   rpc UpdateLeader(UpdateLeaderRequest) returns (Empty);
+  rpc GetMinLogIndex(Empty) returns (MinLogIndexResponse);
+  rpc ClearLogs(ClearFromNum) returns (Empty);
+  rpc LogCommit(LogCommitRequest) returns (LogCommitResponse);
+}
+
+message LogCommitRequest {
+  string key = 1;
+  string value = 2;
+  int32 logIndex = 3;
+}
+
+message LogCommitResponse {
+  bool success = 1;
+}
+
+message ClearFromNum {
+  int32 fromNum = 1;
+}
+
+message MinLogIndexResponse {
+  int32 minLogIndex = 1;
 }
 
 message PutRequest {
