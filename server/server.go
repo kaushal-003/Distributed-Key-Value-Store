@@ -529,7 +529,6 @@ func main() {
 	grpcServer := grpc.NewServer()
 	srv := NewServer(selfIp, peers)
 	pb.RegisterKeyValueStoreServer(grpcServer, srv)
-
 	go func() {
 		fmt.Printf("Server listening at %s\n", selfIp)
 		if err := grpcServer.Serve(lis); err != nil {
@@ -538,8 +537,15 @@ func main() {
 	}()
 
 	time.Sleep(1 * time.Second)
-
 	newLeader := srv.electLeader()
+	srv.mu.Lock()
+	srv.leaderIp = newLeader
+	srv.mu.Unlock()
+	log.Printf("Leader elected: %s", newLeader)
+
+	if srv.selfIp == newLeader {
+		srv.notifyPeers(newLeader)
+	}
 	if srv.selfIp != srv.leaderIp {
 		conn, err := grpc.Dial(srv.leaderIp, grpc.WithInsecure())
 		if err != nil {
@@ -551,14 +557,6 @@ func main() {
 			log.Printf("Warning: cannot get logindex from %s to update leader: %v", srv.leaderIp, err)
 		}
 		srv.syncWithLeader(0, resp.LogIndex)
-	}
-	srv.mu.Lock()
-	srv.leaderIp = newLeader
-	srv.mu.Unlock()
-	log.Printf("Leader elected: %s", newLeader)
-
-	if srv.selfIp == newLeader {
-		srv.notifyPeers(newLeader)
 	}
 
 	go srv.SendandReceiveHeartbeat()
