@@ -44,10 +44,25 @@ func (s *server) GetLogIndex(ctx context.Context, req *pb.Empty) (*pb.LogIndexRe
 	return &pb.LogIndexResponse{LogIndex: s.lastcommitedindex}, nil
 }
 
+func binarySearch(arr []Log, target int32) int {
+	left, right := 0, len(arr)-1
+	for left <= right {
+		mid := left + (right-left)/2
+		if arr[mid].index == target {
+			return mid
+		} else if arr[mid].index < target {
+			left = mid + 1
+		} else {
+			right = mid - 1
+		}
+	}
+	return -1
+}
+
 func (s *server) ClearLogs(ctx context.Context, req *pb.ClearFromNum) (*pb.Empty, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.logs = s.logs[:req.FromNum]
+	s.logs = s.logs[binarySearch(s.logs, req.FromNum):]
 	return &pb.Empty{}, nil
 }
 
