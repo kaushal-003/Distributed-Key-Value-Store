@@ -2,19 +2,22 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
+	_ "github.com/go-sql-driver/mysql"
+
 	pb "distributed-key-value-store/proto"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"google.golang.org/grpc"
 )
@@ -46,6 +49,9 @@ type server struct {
 	logs              []Log
 	lastcommitedindex int32
 	dataDir           string
+	client            *mongo.Client
+	db                *mongo.Database
+	collection        *mongo.Collection
 }
 
 func (s *server) GetLogIndex(ctx context.Context, req *pb.Empty) (*pb.LogIndexResponse, error) {
@@ -121,21 +127,43 @@ func (s *server) SendMinLogIndex(ctx context.Context, req *pb.Empty) (*pb.MinLog
 	return &pb.MinLogIndexResponse{MinLogIndex: minIndex}, nil
 }
 
+func initMongoDB(ip string) (*mongo.Client, *mongo.Database, *mongo.Collection) {
+	mongoIP := fmt.Sprintf(ip + "1")
+	clientOptions := options.Client().ApplyURI("mongodb://" + mongoIP)
+	client, err := mongo.Connect(context.TODO(), clientOptions)
+	if err != nil {
+		log.Fatalf("Failed to connect to MongoDB: %v", err)
+	}
+	db := client.Database("kvstore")
+	collection := db.Collection("store")
+	return client, db, collection
+}
+
 func NewServer(ip string, peers []string) *server {
+	client, db, collection := initMongoDB(ip)
 	dataDir := "data_" + strings.Replace(ip, ":", "_", -1)
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		log.Fatalf("Failed to create data directory: %v", err)
 	}
 	return &server{
-		store:  make(map[string]string),
-		peers:  peers,
-		selfIp: ip,
-
+		client:            client,
+		db:                db,
+		collection:        collection,
+		peers:             peers,
+		selfIp:            ip,
 		lastHeartbeatTime: time.Now(),
 		logs:              []Log{},
 		dataDir:           dataDir,
 		lastcommitedindex: -1,
 	}
+
+}
+
+func (s *server) insertOrUpdateMongo(key string, value string) error {
+	filter := bson.M{"key": key}
+	update := bson.M{"$set": bson.M{"value": value}}
+	_, err := s.collection.UpdateOne(context.TODO(), filter, update, options.Update().SetUpsert(true))
+	return err
 }
 
 func (s *server) CommitDatatoDisk() {
@@ -146,16 +174,23 @@ func (s *server) CommitDatatoDisk() {
 	logtocommit := s.logs[lastcommited+1:]
 
 	for _, log := range logtocommit {
-		data, err := json.Marshal(StoreCommit{Key: log.key, Value: log.value})
+
+		err := s.insertOrUpdateMongo(log.key, log.value)
 		if err != nil {
-			fmt.Printf("Warning: Could not serialize store data: %v", err)
+			fmt.Printf("Error: Could not insert/update data in MongoDB: %v", err)
 			return
 		}
 
-		storeFile := filepath.Join(s.dataDir, "store.json")
-		if err := ioutil.WriteFile(storeFile, data, 0644); err != nil {
-			fmt.Printf("Warning: Could not write store file: %v", err)
-		}
+		// data, err := json.Marshal(StoreCommit{Key: log.key, Value: log.value})
+		// if err != nil {
+		// 	fmt.Printf("Warning: Could not serialize store data: %v", err)
+		// 	return
+		// }
+
+		// storeFile := filepath.Join(s.dataDir, "store.json")
+		// if err := ioutil.WriteFile(storeFile, data, 0644); err != nil {
+		// 	fmt.Printf("Warning: Could not write store file: %v", err)
+		// }
 
 	}
 	s.lastcommitedindex = s.logs[len(s.logs)-1].index
@@ -302,8 +337,16 @@ func (s *server) UpdateLeader(ctx context.Context, req *pb.UpdateLeaderRequest) 
 func (s *server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	value, found := s.store[req.Key]
-	return &pb.GetResponse{Value: value, Found: found}, nil
+	var result StoreCommit
+	err := s.collection.FindOne(ctx, bson.M{"key": req.Key}).Decode(&result)
+	if err == mongo.ErrNoDocuments {
+		return &pb.GetResponse{Value: "", Found: false}, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return &pb.GetResponse{Value: result.Value, Found: true}, nil
+
 }
 
 func (s *server) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error) {
@@ -324,14 +367,11 @@ func (s *server) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, 
 	s.mu.Lock()
 	s.store = make(map[string]string)
 	log.Printf("Put: %s -> %s", req.Key, req.Value)
-	data, _ := json.Marshal(StoreCommit{Key: req.Key, Value: req.Value})
-	storeFile := filepath.Join(s.dataDir, "store.json")
-	// add data to store file
-
-	if err := ioutil.WriteFile(storeFile, data, 0644); err != nil {
-		fmt.Printf("Warning: Could not write store file: %v", err)
+	err := s.insertOrUpdateMongo(req.Key, req.Value)
+	if err != nil {
+		log.Printf("Warning: Could not write to MongoDB: %v", err)
+		return &pb.PutResponse{Success: false}, nil
 	}
-	s.mu.Unlock()
 
 	success := s.SendLogCommitToPeers(req.Key, req.Value, newIndex)
 	if !success {
@@ -339,6 +379,7 @@ func (s *server) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, 
 		return &pb.PutResponse{Success: false}, nil
 	}
 	return &pb.PutResponse{Success: true}, nil
+
 }
 
 func (s *server) GetLogEntry(ctx context.Context, req *pb.GetLogEntryRequest) (*pb.GetLogEntryResponse, error) {
