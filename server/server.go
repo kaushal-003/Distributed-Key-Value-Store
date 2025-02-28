@@ -21,6 +21,11 @@ type Log struct {
 	index int32
 }
 
+type Mixed struct {
+	StrVal string
+	IntVal int
+}
+
 type server struct {
 	pb.UnimplementedKeyValueStoreServer
 	mu                sync.Mutex
@@ -113,18 +118,32 @@ func isReachable(addr string) bool {
 }
 
 func (s *server) electLeader() string {
-	available := []string{}
+	//create array with string and int
+	available := []Mixed{}
 
 	if isReachable(s.selfIp) {
-		available = append(available, s.selfIp)
+		available = append(available, Mixed{StrVal: s.selfIp, IntVal: int(s.lastcommitedindex)})
 	}
 
+	// get last commited index from all servers
 	for _, peer := range s.peers {
-		if peer == s.selfIp {
-			continue
-		}
 		if isReachable(peer) {
-			available = append(available, peer)
+			conn, err := grpc.Dial(peer, grpc.WithInsecure())
+			if err != nil {
+				log.Printf("Warning: cannot connect to %s to get last committed index: %v", peer, err)
+				continue
+			}
+			client := pb.NewKeyValueStoreClient(conn)
+			resp, err := client.GetLogIndex(context.Background(), &pb.Empty{})
+			if err != nil {
+				log.Printf("Warning: cannot get last committed index from %s: %v", peer, err)
+				conn.Close()
+				continue
+			}
+			Ind := resp.LogIndex
+			Ip := peer
+			conn.Close()
+			available = append(available, Mixed{StrVal: Ip, IntVal: int(Ind)})
 		}
 	}
 
@@ -132,8 +151,13 @@ func (s *server) electLeader() string {
 		log.Fatal("No available servers for leader election!")
 	}
 
-	sort.Strings(available)
-	newLeader := available[len(available)-1]
+	sort.Slice(available, func(i, j int) bool {
+		if available[i].IntVal == available[j].IntVal {
+			return available[i].StrVal < available[j].StrVal
+		}
+		return available[i].IntVal < available[j].IntVal
+	})
+	newLeader := available[len(available)-1].StrVal
 	return newLeader
 }
 
