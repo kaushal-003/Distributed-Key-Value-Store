@@ -538,6 +538,18 @@ func main() {
 	time.Sleep(1 * time.Second)
 
 	newLeader := srv.electLeader()
+	if srv.selfIp != srv.leaderIp {
+		conn, err := grpc.Dial(srv.leaderIp, grpc.WithInsecure())
+		if err != nil {
+			log.Printf("Warning: cannot connect to %s to update leader: %v", srv.leaderIp, err)
+		}
+		client := pb.NewKeyValueStoreClient(conn)
+		resp, err := client.GetLogIndex(context.Background(), &pb.Empty{})
+		if err != nil {
+			log.Printf("Warning: cannot get logindex from %s to update leader: %v", srv.leaderIp, err)
+		}
+		srv.syncWithLeader(0, resp.LogIndex)
+	}
 	srv.mu.Lock()
 	srv.leaderIp = newLeader
 	srv.mu.Unlock()
