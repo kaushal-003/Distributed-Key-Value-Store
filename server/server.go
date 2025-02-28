@@ -2,11 +2,15 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -16,9 +20,9 @@ import (
 )
 
 type Log struct {
-	key   string
-	value string
-	index int32
+	key   string `json:"key"`
+	value string `json:"value"`
+	index int32  `json:"index"`
 }
 
 type Mixed struct {
@@ -36,6 +40,7 @@ type server struct {
 	lastHeartbeatTime time.Time
 	logs              []Log
 	lastcommitedindex int32
+	dataDir           string
 }
 
 func (s *server) GetLogIndex(ctx context.Context, req *pb.Empty) (*pb.LogIndexResponse, error) {
@@ -112,12 +117,47 @@ func (s *server) SendMinLogIndex(ctx context.Context, req *pb.Empty) (*pb.MinLog
 }
 
 func NewServer(ip string, peers []string) *server {
+	dataDir := "data_" + strings.Replace(ip, ":", "_", -1)
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
+		log.Fatalf("Failed to create data directory: %v", err)
+	}
 	return &server{
 		store:  make(map[string]string),
 		peers:  peers,
 		selfIp: ip,
 
 		lastHeartbeatTime: time.Now(),
+
+		dataDir: dataDir,
+	}
+}
+
+func (s *server) CommitDatatoDisk() {
+	data, err := json.Marshal(s.store)
+	if err != nil {
+		log.Printf("Warning: Could not serialize store data: %v", err)
+		return
+	}
+
+	storeFile := filepath.Join(s.dataDir, "store.json")
+	if err := ioutil.WriteFile(storeFile, data, 0644); err != nil {
+		log.Printf("Warning: Could not write store file: %v", err)
+	}
+
+	s.lastcommitedindex = s.logs[len(s.logs)-1].index
+
+}
+
+func (s *server) LogCommit(ctx context.Context, req *pb.LogCommitRequest) (*pb.LogCommitResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if req.Index <= s.lastcommitedindex {
+		return &pb.LogCommitResponse{Success: true}, nil
+	}
+
+	if req.Index != s.logs[0].index+1 {
+
 	}
 }
 
