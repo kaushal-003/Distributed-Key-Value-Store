@@ -20,9 +20,14 @@ import (
 )
 
 type Log struct {
-	key   string `json:"key"`
-	value string `json:"value"`
-	index int32  `json:"index"`
+	key   string
+	value string
+	index int32
+}
+
+type StoreCommit struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 type Mixed struct {
@@ -127,38 +132,84 @@ func NewServer(ip string, peers []string) *server {
 		selfIp: ip,
 
 		lastHeartbeatTime: time.Now(),
-
-		dataDir: dataDir,
+		logs:              []Log{},
+		dataDir:           dataDir,
+		lastcommitedindex: -1,
 	}
 }
 
 func (s *server) CommitDatatoDisk() {
-	data, err := json.Marshal(s.store)
-	if err != nil {
-		log.Printf("Warning: Could not serialize store data: %v", err)
+	if len(s.logs) == 0 {
 		return
 	}
+	lastcommited := binarySearch(s.logs, s.lastcommitedindex)
+	logtocommit := s.logs[lastcommited+1:]
 
-	storeFile := filepath.Join(s.dataDir, "store.json")
-	if err := ioutil.WriteFile(storeFile, data, 0644); err != nil {
-		log.Printf("Warning: Could not write store file: %v", err)
+	for _, log := range logtocommit {
+		data, err := json.Marshal(StoreCommit{Key: log.key, Value: log.value})
+		if err != nil {
+			fmt.Printf("Warning: Could not serialize store data: %v", err)
+			return
+		}
+
+		storeFile := filepath.Join(s.dataDir, "store.json")
+		if err := ioutil.WriteFile(storeFile, data, 0644); err != nil {
+			fmt.Printf("Warning: Could not write store file: %v", err)
+		}
+
 	}
-
 	s.lastcommitedindex = s.logs[len(s.logs)-1].index
+}
 
+func (s *server) RegularLogCommit() {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		s.mu.Lock()
+		s.CommitDatatoDisk()
+		s.mu.Unlock()
+	}
 }
 
 func (s *server) LogCommit(ctx context.Context, req *pb.LogCommitRequest) (*pb.LogCommitResponse, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if req.Index <= s.lastcommitedindex {
-		return &pb.LogCommitResponse{Success: true}, nil
+	if req.LogIndex-1 != s.logs[len(s.logs)-1].index {
+		s.syncWithLeader(s.logs[len(s.logs)-1].index+1, req.LogIndex)
+		return &pb.LogCommitResponse{Success: false}, nil
 	}
 
-	if req.Index != s.logs[0].index+1 {
+	s.store[req.Key] = req.Value
+	s.logs = append(s.logs, Log{key: req.Key, value: req.Value, index: req.LogIndex})
+	return &pb.LogCommitResponse{Success: true}, nil
+}
 
+func (s *server) SendLogCommitToPeers(key string, value string, logIndex int32) (success bool) {
+
+	for _, peer := range s.peers {
+		if peer == s.selfIp {
+			continue
+		}
+
+		if !isReachable(peer) {
+			continue
+		}
+
+		conn, err := grpc.Dial(peer, grpc.WithInsecure())
+		if err != nil {
+			log.Printf("Warning: cannot connect to %s to update leader: %v", peer, err)
+			continue
+		}
+		client := pb.NewKeyValueStoreClient(conn)
+		response, err := client.LogCommit(context.Background(), &pb.LogCommitRequest{Key: key, Value: value, LogIndex: logIndex})
+		if !response.Success {
+			log.Printf("Warning: Log commit failed on %s: %v", peer, err)
+			return false
+		}
 	}
+	return true
 }
 
 func isReachable(addr string) bool {
@@ -196,6 +247,7 @@ func (s *server) electLeader() string {
 				continue
 			}
 			Ind := resp.LogIndex
+			log.Printf("Last committed index from %s: %d", peer, Ind)
 			Ip := peer
 			conn.Close()
 			available = append(available, Mixed{StrVal: Ip, IntVal: int(Ind)})
@@ -210,7 +262,7 @@ func (s *server) electLeader() string {
 		if available[i].IntVal == available[j].IntVal {
 			return available[i].StrVal < available[j].StrVal
 		}
-		return available[i].IntVal > available[j].IntVal
+		return available[i].IntVal < available[j].IntVal
 	})
 	newLeader := available[len(available)-1].StrVal
 	return newLeader
@@ -265,34 +317,69 @@ func (s *server) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, 
 		return client.Put(ctx, req)
 	}
 
+	newIndex := s.lastcommitedindex + 1
+	s.logs = append(s.logs, Log{key: req.Key, value: req.Value, index: newIndex})
+	s.lastcommitedindex = newIndex
+
 	s.mu.Lock()
+	s.store = make(map[string]string)
 	log.Printf("Put: %s -> %s", req.Key, req.Value)
-	s.store[req.Key] = req.Value
+	data, _ := json.Marshal(StoreCommit{Key: req.Key, Value: req.Value})
+	storeFile := filepath.Join(s.dataDir, "store.json")
+	// add data to store file
+
+	if err := ioutil.WriteFile(storeFile, data, 0644); err != nil {
+		fmt.Printf("Warning: Could not write store file: %v", err)
+	}
 	s.mu.Unlock()
 
-	for _, peer := range s.peers {
-		if peer == s.selfIp {
-			continue
-		}
-
-		if !isReachable(peer) {
-			log.Printf("Skipping replication to %s (not reachable)", peer)
-			continue
-		}
-		conn, err := grpc.Dial(peer, grpc.WithInsecure())
-		if err != nil {
-			log.Printf("Warning: unable to replicate to %s: %v", peer, err)
-			continue
-		}
-		log.Printf("Replicating to %s", peer)
-		client := pb.NewKeyValueStoreClient(conn)
-		_, err = client.Replicate(ctx, &pb.ReplicateRequest{Key: req.Key, Value: req.Value})
-		if err != nil {
-			log.Printf("Warning: replication error to %s: %v", peer, err)
-		}
-		conn.Close()
+	success := s.SendLogCommitToPeers(req.Key, req.Value, newIndex)
+	if !success {
+		log.Printf("Warning: Log commit failed on some peers")
+		return &pb.PutResponse{Success: false}, nil
 	}
 	return &pb.PutResponse{Success: true}, nil
+}
+
+func (s *server) GetLogEntry(ctx context.Context, req *pb.GetLogEntryRequest) (*pb.GetLogEntryResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ind := req.Index
+	ind = int32(binarySearch(s.logs, ind))
+	if ind < 0 {
+		return &pb.GetLogEntryResponse{Key: "Invalid", Value: "invalid", LogIndex: -1}, nil
+	}
+	return &pb.GetLogEntryResponse{Key: s.logs[ind].key, Value: s.logs[ind].value, LogIndex: req.Index}, nil
+}
+
+func (s *server) syncWithLeader(prevInd int32, currInd int32) {
+	for i := prevInd; i <= currInd; i++ {
+		log.Printf("Syncing with leader at index %d", i)
+		Ip := s.leaderIp
+		//get log entry from leader
+		conn, err := grpc.Dial(Ip, grpc.WithInsecure())
+		if err != nil {
+			log.Printf("Warning: unable to connect to %s: %v", Ip, err)
+			continue
+		}
+		client := pb.NewKeyValueStoreClient(conn)
+		resp, err := client.GetLogEntry(context.Background(), &pb.GetLogEntryRequest{Index: i})
+		if err != nil {
+			log.Printf("Warning: replication error to %s: %v", Ip, err)
+		}
+		if resp.LogIndex != -1 {
+			s.mu.Lock()
+			s.logs = append(s.logs, Log{
+				key:   resp.Key,
+				value: resp.Value,
+				index: resp.LogIndex,
+			})
+			s.mu.Unlock()
+		}
+
+		conn.Close()
+	}
 }
 
 func (s *server) Replicate(ctx context.Context, req *pb.ReplicateRequest) (*pb.Empty, error) {
@@ -400,6 +487,8 @@ func main() {
 	}
 
 	go srv.SendandReceiveHeartbeat()
+
+	go srv.RegularLogCommit()
 
 	select {}
 }

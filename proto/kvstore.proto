@@ -14,7 +14,17 @@ service KeyValueStore {
   rpc SendMinLogIndex(Empty) returns (MinLogIndexResponse);
   rpc ClearLogs(ClearFromNum) returns (Empty);
   rpc LogCommit(LogCommitRequest) returns (LogCommitResponse);
+  rpc GetLogEntry(GetLogEntryRequest) returns (GetLogEntryResponse);
+}
 
+message GetLogEntryRequest {
+  int32 index = 1;
+}
+
+message GetLogEntryResponse {
+    string key = 1;
+    string value = 2;
+    int32 logIndex = 3;
 }
 
 message LogIndexResponse {
