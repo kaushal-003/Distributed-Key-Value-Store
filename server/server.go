@@ -79,12 +79,13 @@ func (s *server) ClearLogs(ctx context.Context, req *pb.ClearFromNum) (*pb.Empty
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.logs = s.logs[binarySearch(s.logs, req.FromNum):]
+	log.Printf("Logs Size %d", len(s.logs))
 	return &pb.Empty{}, nil
 }
 
 func (s *server) SendMinLogIndex(ctx context.Context, req *pb.Empty) (*pb.MinLogIndexResponse, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	// s.mu.Lock()
+	// defer s.mu.Unlock()
 	// From all servers get the minimum log index
 	minIndex := s.lastcommitedindex
 	for _, peer := range s.peers {
@@ -109,9 +110,11 @@ func (s *server) SendMinLogIndex(ctx context.Context, req *pb.Empty) (*pb.MinLog
 
 	// Send the minimum log index to all servers
 	for _, peer := range s.peers {
+
 		if !isReachable(peer) {
 			continue
 		}
+
 		conn, err := grpc.Dial(peer, grpc.WithInsecure())
 		if err != nil {
 			log.Printf("Warning: cannot connect to %s for heartbeat: %v", peer, err)
@@ -124,7 +127,21 @@ func (s *server) SendMinLogIndex(ctx context.Context, req *pb.Empty) (*pb.MinLog
 		}
 		conn.Close()
 	}
+
 	return &pb.MinLogIndexResponse{MinLogIndex: minIndex}, nil
+}
+
+func (s *server) RegularLogClear() {
+	if s.selfIp == s.leaderIp {
+		ticker := time.NewTicker(60 * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+
+			s.SendMinLogIndex(context.Background(), &pb.Empty{})
+
+		}
+	}
 }
 
 func initMongoDB(ip string) (*mongo.Client, *mongo.Database, *mongo.Collection) {
@@ -533,6 +550,8 @@ func main() {
 	go srv.SendandReceiveHeartbeat()
 
 	go srv.RegularLogCommit()
+
+	go srv.RegularLogClear()
 
 	select {}
 }
