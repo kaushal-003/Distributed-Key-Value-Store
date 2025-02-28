@@ -155,7 +155,7 @@ func (s *server) electLeader() string {
 		if available[i].IntVal == available[j].IntVal {
 			return available[i].StrVal < available[j].StrVal
 		}
-		return available[i].IntVal < available[j].IntVal
+		return available[i].IntVal > available[j].IntVal
 	})
 	newLeader := available[len(available)-1].StrVal
 	return newLeader
