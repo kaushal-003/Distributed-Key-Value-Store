@@ -78,8 +78,10 @@ func binarySearch(arr []Log, target int32) int {
 func (s *server) ClearLogs(ctx context.Context, req *pb.ClearFromNum) (*pb.Empty, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.logs = s.logs[binarySearch(s.logs, req.FromNum):]
-	log.Printf("Logs Size %d", len(s.logs))
+	if binarySearch(s.logs, req.FromNum) != -1 {
+		s.logs = s.logs[binarySearch(s.logs, req.FromNum):]
+		log.Printf("Logs Size %d", len(s.logs))
+	}
 	return &pb.Empty{}, nil
 }
 
