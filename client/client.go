@@ -6,7 +6,8 @@ import (
 	"log"
 	"os"
 
-	pb "github.com/anish-karnik/distributed-kv-store/proto"
+	pb "distributed-key-value-store/proto"
+
 	"google.golang.org/grpc"
 )
 
