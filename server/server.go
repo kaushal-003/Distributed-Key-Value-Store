@@ -128,8 +128,7 @@ func (s *server) SendMinLogIndex(ctx context.Context, req *pb.Empty) (*pb.MinLog
 }
 
 func initMongoDB(ip string) (*mongo.Client, *mongo.Database, *mongo.Collection) {
-	mongoIP := fmt.Sprintf(ip + "1")
-	clientOptions := options.Client().ApplyURI("mongodb://" + mongoIP)
+	clientOptions := options.Client().ApplyURI("mongodb://127.0.0.1:27017")
 	client, err := mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
 		log.Fatalf("Failed to connect to MongoDB: %v", err)
@@ -154,7 +153,7 @@ func NewServer(ip string, peers []string) *server {
 		lastHeartbeatTime: time.Now(),
 		logs:              []Log{},
 		dataDir:           dataDir,
-		lastcommitedindex: -1,
+		lastcommitedindex: 0,
 	}
 
 }
@@ -208,15 +207,20 @@ func (s *server) RegularLogCommit() {
 }
 
 func (s *server) LogCommit(ctx context.Context, req *pb.LogCommitRequest) (*pb.LogCommitResponse, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 
-	if req.LogIndex-1 != s.logs[len(s.logs)-1].index {
-		s.syncWithLeader(s.logs[len(s.logs)-1].index+1, req.LogIndex)
+	if len(s.logs) != 0 && req.LogIndex-1 != s.logs[len(s.logs)-1].index {
+		fmt.Println("sync started")
+		s.syncWithLeader(s.logs[len(s.logs)].index+1, req.LogIndex)
 		return &pb.LogCommitResponse{Success: false}, nil
 	}
 
-	s.store[req.Key] = req.Value
+	if len(s.logs) == 0 && req.LogIndex > 1 {
+		fmt.Println("sync started")
+		s.syncWithLeader(s.logs[len(s.logs)].index+1, req.LogIndex)
+		return &pb.LogCommitResponse{Success: false}, nil
+	}
+
+	//s.store[req.Key] = req.Value
 	s.logs = append(s.logs, Log{key: req.Key, value: req.Value, index: req.LogIndex})
 	return &pb.LogCommitResponse{Success: true}, nil
 }
@@ -335,13 +339,13 @@ func (s *server) UpdateLeader(ctx context.Context, req *pb.UpdateLeaderRequest) 
 }
 
 func (s *server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	var result StoreCommit
 	err := s.collection.FindOne(ctx, bson.M{"key": req.Key}).Decode(&result)
 	if err == mongo.ErrNoDocuments {
+		fmt.Println("Key not found")
 		return &pb.GetResponse{Value: "", Found: false}, nil
 	} else if err != nil {
+		fmt.Println("Key not found")
 		return nil, err
 	}
 
@@ -364,7 +368,6 @@ func (s *server) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, 
 	s.logs = append(s.logs, Log{key: req.Key, value: req.Value, index: newIndex})
 	s.lastcommitedindex = newIndex
 
-	s.mu.Lock()
 	s.store = make(map[string]string)
 	log.Printf("Put: %s -> %s", req.Key, req.Value)
 	err := s.insertOrUpdateMongo(req.Key, req.Value)
