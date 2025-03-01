@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "my-libkv.h"  
+#include "my-libkv.h"
 
 void run_test_case(char *desc, char* done) {
     printf("Expected Result: %s, Got: %s\n", desc, done);
@@ -9,7 +9,6 @@ void run_test_case(char *desc, char* done) {
 }
 
 int main(void) {
-    // Define a null-terminated array of server strings.
     char *servers[] = {"127.0.0.1:5002", NULL};
 
     printf("Initializing the key-value store\n");

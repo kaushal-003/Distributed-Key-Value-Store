@@ -83,9 +83,6 @@ func (s *server) ClearLogs(ctx context.Context, req *pb.ClearFromNum) (*pb.Empty
 }
 
 func (s *server) SendMinLogIndex(ctx context.Context, req *pb.Empty) (*pb.MinLogIndexResponse, error) {
-	// s.mu.Lock()
-	// defer s.mu.Unlock()
-	// From all servers get the minimum log index
 	minIndex := s.lastcommitedindex
 	for _, peer := range s.peers {
 		if !isReachable(peer) {
@@ -108,7 +105,6 @@ func (s *server) SendMinLogIndex(ctx context.Context, req *pb.Empty) (*pb.MinLog
 		conn.Close()
 	}
 
-	// Send the minimum log index to all servers
 	for _, peer := range s.peers {
 
 		if !isReachable(peer) {
@@ -196,17 +192,6 @@ func (s *server) CommitDatatoDisk() {
 			return
 		}
 
-		// data, err := json.Marshal(StoreCommit{Key: log.key, Value: log.value})
-		// if err != nil {
-		// 	fmt.Printf("Warning: Could not serialize store data: %v", err)
-		// 	return
-		// }
-
-		// storeFile := filepath.Join(s.dataDir, "store.json")
-		// if err := ioutil.WriteFile(storeFile, data, 0644); err != nil {
-		// 	fmt.Printf("Warning: Could not write store file: %v", err)
-		// }
-
 	}
 	s.lastcommitedindex = s.logs[len(s.logs)-1].index
 }
@@ -236,7 +221,6 @@ func (s *server) LogCommit(ctx context.Context, req *pb.LogCommitRequest) (*pb.L
 		return &pb.LogCommitResponse{Success: false}, nil
 	}
 
-	//s.store[req.Key] = req.Value
 	s.logs = append(s.logs, Log{key: req.Key, value: req.Value, index: req.LogIndex})
 	return &pb.LogCommitResponse{Success: true}, nil
 }
@@ -279,14 +263,12 @@ func isReachable(addr string) bool {
 }
 
 func (s *server) electLeader() string {
-	//create array with string and int
 	available := []Mixed{}
 
 	if isReachable(s.selfIp) {
 		available = append(available, Mixed{StrVal: s.selfIp, IntVal: int(s.lastcommitedindex)})
 	}
 
-	// get last commited index from all servers
 	for _, peer := range s.peers {
 		if isReachable(peer) {
 			conn, err := grpc.Dial(peer, grpc.WithInsecure())
@@ -427,7 +409,6 @@ func (s *server) syncWithLeader(prevInd int32, currInd int32) {
 	for i := prevInd; i <= currInd; i++ {
 		log.Printf("Syncing with leader at index %d", i)
 		Ip := s.leaderIp
-		//get log entry from leader
 		conn, err := grpc.Dial(Ip, grpc.WithInsecure())
 		if err != nil {
 			log.Printf("Warning: unable to connect to %s: %v", Ip, err)
@@ -527,7 +508,6 @@ func main() {
 	selfIp := os.Args[1]
 	peers := os.Args[2:]
 
-	// Start listening first.
 	lis, err := net.Listen("tcp", selfIp)
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)

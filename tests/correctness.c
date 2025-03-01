@@ -1,9 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "my-libkv.h"  
+#include "my-libkv.h"
 
-// Servers list
 char *servers[] = {"127.0.0.1:5000", "127.0.0.1:5001", "127.0.0.1:5002", NULL};
 
 void run_test_case(int test_num, const char *desc, int expected, int result) {
@@ -13,7 +12,6 @@ void run_test_case(int test_num, const char *desc, int expected, int result) {
 }
 
 int main() {
-    // Initialize the key-value store
     int init_status = kv_init(servers);
     run_test_case(1, "Initialize KV Store", 0, init_status);
     if (init_status != 0) {

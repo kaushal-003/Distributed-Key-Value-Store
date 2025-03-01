@@ -1,11 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "my-libkv.h"  
+#include "my-libkv.h"
 
 
 int main(void) {
-    // Define a null-terminated array of server strings.
     char *servers[] = {"127.0.0.1:5000", "127.0.0.1:5001", "127.0.0.1:5002", NULL};
 
     printf("Initializing the key-value store\n");
@@ -18,7 +17,7 @@ int main(void) {
     }
 
     char value[1024];
-    
+
     printf("Putting the key-value pair\n");
     strcpy(value, "Yesssir");
     char oldvalue[1024];

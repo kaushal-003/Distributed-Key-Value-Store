@@ -7,7 +7,6 @@
 #define NUM_KEYS 100
 #define NUM_OPS 10000
 
-// Helper: Returns current time in nanoseconds.
 long long get_ns() {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -20,9 +19,7 @@ int main(void) {
     char value[1024];
     char oldvalue[1024];
 
-    // Define a null-terminated array of server strings.
-    char *servers[] = {"127.0.0.1:5000", "127.0.0.1:5001", "127.0.0.1:5002", NULL};
-    // Initialize the key/value client.
+    char *servers[] = {"10.7.41.69:5000", "10.7.28.104:5000", NULL};
     result = kv_init(servers);
     if (result != 0) {
         printf("kv_init failed with error code: %d\n", result);
@@ -30,7 +27,6 @@ int main(void) {
     }
     printf("kv_init succeeded.\n");
 
-    // Insert NUM_KEYS keys into the database.
     printf("Inserting %d keys into the database...\n", NUM_KEYS);
     for (int i = 0; i < NUM_KEYS; i++) {
         snprintf(key, sizeof(key), "key%d", i);
@@ -47,13 +43,12 @@ int main(void) {
     double avg_latency;  // in microseconds
     int errors = 0;
 
-    // 1. Uniformly Random Distribution: randomly select any key among the 100 inserted.
     printf("\nPerformance Test: Uniformly Random Distribution\n");
     srand((unsigned int) time(NULL));
     start = get_ns();
     errors = 0;
     for (int i = 0; i < NUM_OPS; i++) {
-        int idx = rand() % NUM_KEYS;  // random index 0 to NUM_KEYS-1
+        int idx = rand() % NUM_KEYS;
         snprintf(key, sizeof(key), "key%d", idx);
         result = kv_get(key, value);
         if (result < 0) {
@@ -67,9 +62,6 @@ int main(void) {
     printf("Uniform Random: %d ops in %lld ns, throughput = %.2f ops/sec, avg latency = %.2f µs, errors = %d\n",
            NUM_OPS, duration, throughput, avg_latency, errors);
 
-    // 2. Hot/Cold Distribution:
-    //    90% of requests hit one of the 10 "hot" keys (key0 to key9),
-    //    while 10% of requests hit one of the remaining "cold" keys (key10 to key99).
     printf("\nPerformance Test: Hot/Cold Distribution (10%% hot, 90%% of requests on hot keys)\n");
     start = get_ns();
     errors = 0;
@@ -96,7 +88,6 @@ int main(void) {
     printf("Hot/Cold: %d ops in %lld ns, throughput = %.2f ops/sec, avg latency = %.2f µs, errors = %d\n",
            NUM_OPS, duration, throughput, avg_latency, errors);
 
-    // Shutdown the key/value client.
     kv_shutdown();
     return 0;
 }

@@ -1,9 +1,5 @@
 package main
 
-/*
-#include <stdlib.h>
-#include <string.h>
-*/
 import "C"
 import (
 	"context"
@@ -17,7 +13,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Global variables for managing state
 var (
 	servers    []string
 	currServer string
@@ -46,7 +41,6 @@ func ValidateValue(value string) bool {
 	return validValuePattern.MatchString(value)
 }
 
-//export kv_init
 func kv_init(serverList **C.char) C.int {
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -54,7 +48,6 @@ func kv_init(serverList **C.char) C.int {
 	servers = []string{}
 	ptr := serverList
 
-	// Convert C string array to Go slice
 	for *ptr != nil {
 		servers = append(servers, C.GoString(*ptr))
 		ptr = (**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(ptr)) + unsafe.Sizeof(*ptr)))
@@ -79,7 +72,6 @@ func kv_init(serverList **C.char) C.int {
 	return -1
 }
 
-//export kv_shutdown
 func kv_shutdown() C.int {
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -93,7 +85,6 @@ func kv_shutdown() C.int {
 	return 0
 }
 
-//export kv_get
 func kv_get(key *C.char, value *C.char) C.int {
 	var err2 error
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -120,7 +111,6 @@ func kv_get(key *C.char, value *C.char) C.int {
 		return -1
 	}
 
-	//Send GET request to server
 	fmt.Sprintf("GET %s\n", C.GoString(key))
 
 	if !ValidateKey(C.GoString(key)) {
@@ -139,14 +129,12 @@ func kv_get(key *C.char, value *C.char) C.int {
 		return 1
 	}
 
-	// Convert Go string to C string and copy to the provided buffer
 	cResponse := C.CString(val)
 	defer C.free(unsafe.Pointer(cResponse))
 	C.strcpy(value, cResponse)
 	return 0
 }
 
-//export kv_put
 func kv_put(key *C.char, value *C.char, old_value *C.char) C.int {
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -176,10 +164,6 @@ func kv_put(key *C.char, value *C.char, old_value *C.char) C.int {
 		return -1
 	}
 
-	// if conn == nil {
-	// 	return -1
-	// }
-
 	old_status := kv_get(key, old_value)
 	if old_status == -1 {
 		return -1
@@ -195,7 +179,6 @@ func kv_put(key *C.char, value *C.char, old_value *C.char) C.int {
 		return -1
 	}
 
-	// Send PUT request
 	client := pb.NewKeyValueStoreClient(conn)
 	_, err := client.Put(context.Background(), &pb.PutRequest{Key: C.GoString(key), Value: C.GoString(value)})
 
@@ -213,4 +196,4 @@ func kv_put(key *C.char, value *C.char, old_value *C.char) C.int {
 
 func main() {
 
-} // Required for cgo shared libraries
+}
