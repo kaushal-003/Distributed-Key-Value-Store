@@ -55,8 +55,6 @@ type server struct {
 }
 
 func (s *server) GetLogIndex(ctx context.Context, req *pb.Empty) (*pb.LogIndexResponse, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	return &pb.LogIndexResponse{LogIndex: s.lastcommitedindex}, nil
 }
 
@@ -80,8 +78,8 @@ func (s *server) ClearLogs(ctx context.Context, req *pb.ClearFromNum) (*pb.Empty
 	defer s.mu.Unlock()
 	if binarySearch(s.logs, req.FromNum) != -1 {
 		s.logs = s.logs[binarySearch(s.logs, req.FromNum):]
-		log.Printf("Logs Size %d", len(s.logs))
 	}
+	log.Printf("Logs Size %d", len(s.logs))
 	return &pb.Empty{}, nil
 }
 
@@ -92,6 +90,7 @@ func (s *server) SendMinLogIndex(ctx context.Context, req *pb.Empty) (*pb.MinLog
 	minIndex := s.lastcommitedindex
 	for _, peer := range s.peers {
 		if !isReachable(peer) {
+			minIndex = 0
 			continue
 		}
 		conn, err := grpc.Dial(peer, grpc.WithInsecure())
@@ -125,7 +124,7 @@ func (s *server) SendMinLogIndex(ctx context.Context, req *pb.Empty) (*pb.MinLog
 		client := pb.NewKeyValueStoreClient(conn)
 		_, err = client.ClearLogs(context.Background(), &pb.ClearFromNum{FromNum: minIndex})
 		if err != nil {
-			log.Printf("Warning: heartbeat failed to %s: %v", peer, err)
+			log.Printf("Warning: clear logs failed to %s: %v", peer, err)
 		}
 		conn.Close()
 	}
@@ -139,7 +138,7 @@ func (s *server) RegularLogClear() {
 		defer ticker.Stop()
 
 		for range ticker.C {
-
+			log.Printf("Clearing logs")
 			s.SendMinLogIndex(context.Background(), &pb.Empty{})
 
 		}

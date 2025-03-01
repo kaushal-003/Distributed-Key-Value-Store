@@ -10,6 +10,7 @@ import (
 	pb "distributed-key-value-store/proto"
 	"fmt"
 	"sync"
+	"time"
 	"unsafe"
 
 	"google.golang.org/grpc"
@@ -28,27 +29,31 @@ func kv_init(serverList **C.char) C.int {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	// Convert C strings array to Go slice
 	servers = []string{}
 	ptr := serverList
+
+	// Convert C string array to Go slice
 	for *ptr != nil {
 		servers = append(servers, C.GoString(*ptr))
 		ptr = (**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(ptr)) + unsafe.Sizeof(*ptr)))
 	}
 
-	// Attempt connection to the first server
-	if len(servers) > 0 {
+	for _, server := range servers {
 		var err error
-		conn, err = grpc.Dial(servers[0], grpc.WithInsecure())
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+
+		conn, err = grpc.DialContext(ctx, server, grpc.WithInsecure(), grpc.WithBlock())
 		if err != nil {
-			fmt.Println("Failed to connect:", err)
-			return -1
+			continue
 		} else {
-			fmt.Println("Connected to server:", servers[0])
-			currServer = servers[0]
+			fmt.Println("Connected to server:", server)
+			currServer = server
 			return 0
 		}
 	}
+
+	fmt.Println("No available servers to connect to.")
 	return -1
 }
 
@@ -68,12 +73,50 @@ func kv_shutdown() C.int {
 
 //export kv_get
 func kv_get(key *C.char, value *C.char) C.int {
+	// conn, err := grpc.Dial(currServer, grpc.WithInsecure())
+	// if err != nil {
+	// 	for _, server := range servers {
+	// 		var err error
+	// 		conn, err = grpc.Dial(server, grpc.WithInsecure())
+	// 		if err != nil {
+	// 			continue
+	// 		} else {
+	// 			fmt.Println("Connected to server:", server)
+	// 			currServer = server
+	// 			break
+	// 		}
+	// 	}
+	// }
 
-	if conn == nil {
+	// if err != nil {
+	// 	return -1
+	// }
+	var err2 error
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	conn, err2 = grpc.DialContext(ctx, currServer, grpc.WithInsecure(), grpc.WithBlock())
+	if err2 != nil {
+		for _, server := range servers {
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+
+			conn, err2 = grpc.DialContext(ctx, server, grpc.WithInsecure(), grpc.WithBlock())
+			if err2 != nil {
+				continue
+			} else {
+				fmt.Println("Connected to server:", server)
+				currServer = server
+				break
+			}
+		}
+	}
+
+	if err2 != nil {
 		return -1
 	}
 
-	// Send GET request to server
+	//Send GET request to server
 	fmt.Sprintf("GET %s\n", C.GoString(key))
 	client := pb.NewKeyValueStoreClient(conn)
 
@@ -83,7 +126,7 @@ func kv_get(key *C.char, value *C.char) C.int {
 		return -1
 	}
 	val := resp.Value
-	if resp.Found == false {
+	if !resp.Found {
 		return 1
 	}
 
@@ -99,9 +142,34 @@ func kv_put(key *C.char, value *C.char, old_value *C.char) C.int {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	if conn == nil {
+	var err2 error
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	conn, err2 = grpc.DialContext(ctx, currServer, grpc.WithInsecure(), grpc.WithBlock())
+	if err2 != nil {
+		for _, server := range servers {
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+
+			conn, err2 = grpc.DialContext(ctx, server, grpc.WithInsecure(), grpc.WithBlock())
+			if err2 != nil {
+				continue
+			} else {
+				fmt.Println("Connected to server:", server)
+				currServer = server
+				break
+			}
+		}
+	}
+
+	if err2 != nil {
 		return -1
 	}
+
+	// if conn == nil {
+	// 	return -1
+	// }
 
 	old_status := kv_get(key, old_value)
 	if old_status == -1 {
