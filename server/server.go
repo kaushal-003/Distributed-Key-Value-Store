@@ -48,7 +48,6 @@ type server struct {
 	lastHeartbeatTime time.Time
 	logs              []Log
 	lastcommitedindex int32
-	dataDir           string
 	client            *mongo.Client
 	db                *mongo.Database
 	collection        *mongo.Collection
@@ -162,10 +161,6 @@ func initMongoDB(ip string) (*mongo.Client, *mongo.Database, *mongo.Collection) 
 
 func NewServer(ip string, peers []string) *server {
 	client, db, collection := initMongoDB(ip)
-	dataDir := "data_" + strings.Replace(ip, ":", "_", -1)
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
-		log.Fatalf("Failed to create data directory: %v", err)
-	}
 	return &server{
 		client:            client,
 		db:                db,
@@ -174,7 +169,6 @@ func NewServer(ip string, peers []string) *server {
 		selfIp:            ip,
 		lastHeartbeatTime: time.Now(),
 		logs:              []Log{},
-		dataDir:           dataDir,
 		lastcommitedindex: 0,
 	}
 
