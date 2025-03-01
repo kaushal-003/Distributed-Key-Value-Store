@@ -9,6 +9,7 @@ import (
 	"context"
 	pb "distributed-key-value-store/proto"
 	"fmt"
+	"regexp"
 	"sync"
 	"time"
 	"unsafe"
@@ -23,6 +24,27 @@ var (
 	conn       *grpc.ClientConn
 	mutex      sync.Mutex
 )
+
+func ValidateKey(key string) bool {
+	if len(key) > 128 {
+		return false
+	}
+	for _, ch := range key {
+		if ch < 32 || ch > 126 || ch == '[' || ch == ']' {
+			return false
+		}
+	}
+	return true
+}
+
+func ValidateValue(value string) bool {
+	if len(value) > 2048 {
+		return false
+	}
+
+	validValuePattern := regexp.MustCompile(`^[a-zA-Z0-9\s.,_-]+$`)
+	return validValuePattern.MatchString(value)
+}
 
 //export kv_init
 func kv_init(serverList **C.char) C.int {
@@ -73,24 +95,6 @@ func kv_shutdown() C.int {
 
 //export kv_get
 func kv_get(key *C.char, value *C.char) C.int {
-	// conn, err := grpc.Dial(currServer, grpc.WithInsecure())
-	// if err != nil {
-	// 	for _, server := range servers {
-	// 		var err error
-	// 		conn, err = grpc.Dial(server, grpc.WithInsecure())
-	// 		if err != nil {
-	// 			continue
-	// 		} else {
-	// 			fmt.Println("Connected to server:", server)
-	// 			currServer = server
-	// 			break
-	// 		}
-	// 	}
-	// }
-
-	// if err != nil {
-	// 	return -1
-	// }
 	var err2 error
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -118,8 +122,13 @@ func kv_get(key *C.char, value *C.char) C.int {
 
 	//Send GET request to server
 	fmt.Sprintf("GET %s\n", C.GoString(key))
-	client := pb.NewKeyValueStoreClient(conn)
 
+	if !ValidateKey(C.GoString(key)) {
+		fmt.Println("Invalid key: Keys must be printable ASCII (without '[' or ']') and ≤ 128 bytes")
+		return -1
+	}
+
+	client := pb.NewKeyValueStoreClient(conn)
 	resp, err := client.Get(context.Background(), &pb.GetRequest{Key: C.GoString(key)})
 
 	if err != nil {
@@ -173,6 +182,16 @@ func kv_put(key *C.char, value *C.char, old_value *C.char) C.int {
 
 	old_status := kv_get(key, old_value)
 	if old_status == -1 {
+		return -1
+	}
+
+	if !ValidateKey(C.GoString(key)) {
+		fmt.Println("Invalid key: Keys must be printable ASCII (without '[' or ']') and ≤ 128 bytes")
+		return -1
+	}
+
+	if !ValidateValue(C.GoString(value)) {
+		fmt.Println("Invalid value: Values must be printable ASCII and ≤ 2048 bytes")
 		return -1
 	}
 
