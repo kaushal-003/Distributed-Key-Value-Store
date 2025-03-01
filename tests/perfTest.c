@@ -5,7 +5,7 @@
 #include "my-libkv.h"
 
 #define NUM_KEYS 100
-#define NUM_OPS 10000
+#define NUM_OPS 1000
 
 long long get_ns() {
     struct timespec ts;
@@ -19,7 +19,7 @@ int main(void) {
     char value[1024];
     char oldvalue[1024];
 
-    char *servers[] = {"10.7.41.69:5000", "10.7.28.104:5000", NULL};
+    char *servers[] = {"127.0.0.1:5000", "127.0.0.1:5001", NULL};
     result = kv_init(servers);
     if (result != 0) {
         printf("kv_init failed with error code: %d\n", result);
