@@ -147,12 +147,16 @@ func (s *server) RegularLogClear() {
 }
 
 func initMongoDB(ip string) (*mongo.Client, *mongo.Database, *mongo.Collection) {
+	safeIP := strings.ReplaceAll(ip, ".", "_")
+	safeIP = strings.ReplaceAll(safeIP, ":", "_")
+
+	dbName := "kvstore_" + safeIP
 	clientOptions := options.Client().ApplyURI("mongodb://127.0.0.1:27017")
 	client, err := mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
 		log.Fatalf("Failed to connect to MongoDB: %v", err)
 	}
-	db := client.Database("kvstore")
+	db := client.Database(dbName)
 	collection := db.Collection("store")
 	return client, db, collection
 }
@@ -358,6 +362,16 @@ func (s *server) UpdateLeader(ctx context.Context, req *pb.UpdateLeaderRequest) 
 }
 
 func (s *server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
+	if s.selfIp != s.leaderIp {
+		conn, err := grpc.Dial(s.leaderIp, grpc.WithInsecure())
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
+		client := pb.NewKeyValueStoreClient(conn)
+		return client.Get(ctx, req)
+	}
+
 	var result StoreCommit
 	err := s.collection.FindOne(ctx, bson.M{"key": req.Key}).Decode(&result)
 	if err == mongo.ErrNoDocuments {
