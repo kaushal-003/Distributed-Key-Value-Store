@@ -19,7 +19,7 @@ int main(void) {
     char value[1024];
 
     // Issue a GET request for the key "testkey".
-    result = kv_get("testkey", value);
+    result = kv_get("testkey1", value);
     if (result == 0) {
         // Key found, print the returned value.
         printf("kv_get succeeded: value for 'testkey' is '%s'\n", value);
@@ -32,10 +32,40 @@ int main(void) {
     }
 
     // Issue a PUT request for the key "testkey".
-    result = kv_put("testkey", "testvalue","hii");
+
+    strcpy(value, "newvalue1");
+
+    char oldvalue[1024];
+    result = kv_put("testkey1", value, oldvalue);
     if (result == 0) {
         // Key found, print the returned value.
-        printf("kv_put succeeded: value for 'testkey' is '%s'\n", value);
+        printf("kv_put succeeded: value for 'testkey' is '%s'\n and old value is '%s'\n", value, oldvalue);
+    } else if (result == 1) {
+        // Key not found.
+        printf("kv_put: key 'testkey' not found\n");
+    } else {
+        // An error occurred.
+        printf("kv_put failed with error code: %d\n", result);
+    }
+
+    // Issue a GET request for the key "testkey".
+    result = kv_get("testkey1", value);
+    if (result == 0) {
+        // Key found, print the returned value.
+        printf("kv_get succeeded: value for 'testkey' is '%s'\n", value);
+    } else if (result == 1) {
+        // Key not found.
+        printf("kv_get: key 'testkey' not found\n");
+    } else {
+        // An error occurred.
+        printf("kv_get failed with error code: %d\n", result);
+    }
+
+    strcpy(value, "newvalue2");
+    result = kv_put("testkey1", value, oldvalue);
+    if (result == 0) {
+        // Key found, print the returned value.
+        printf("kv_put succeeded: value for 'testkey' is '%s'\n and old value is '%s'\n", value, oldvalue);
     } else if (result == 1) {
         // Key not found.
         printf("kv_put: key 'testkey' not found\n");
@@ -45,6 +75,7 @@ int main(void) {
     }
 
     // Shutdown the key/value client.
+    //
     kv_shutdown();
     return 0;
 }

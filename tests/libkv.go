@@ -68,8 +68,6 @@ func kv_shutdown() C.int {
 
 //export kv_get
 func kv_get(key *C.char, value *C.char) C.int {
-	mutex.Lock()
-	defer mutex.Unlock()
 
 	if conn == nil {
 		return -1
