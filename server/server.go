@@ -2,19 +2,22 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
+	_ "github.com/go-sql-driver/mysql"
+
 	pb "distributed-key-value-store/proto"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"google.golang.org/grpc"
 )
@@ -45,12 +48,12 @@ type server struct {
 	lastHeartbeatTime time.Time
 	logs              []Log
 	lastcommitedindex int32
-	dataDir           string
+	client            *mongo.Client
+	db                *mongo.Database
+	collection        *mongo.Collection
 }
 
 func (s *server) GetLogIndex(ctx context.Context, req *pb.Empty) (*pb.LogIndexResponse, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	return &pb.LogIndexResponse{LogIndex: s.lastcommitedindex}, nil
 }
 
@@ -72,17 +75,18 @@ func binarySearch(arr []Log, target int32) int {
 func (s *server) ClearLogs(ctx context.Context, req *pb.ClearFromNum) (*pb.Empty, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.logs = s.logs[binarySearch(s.logs, req.FromNum):]
+	if binarySearch(s.logs, req.FromNum) != -1 {
+		s.logs = s.logs[binarySearch(s.logs, req.FromNum):]
+	}
+	log.Printf("Logs Size %d", len(s.logs))
 	return &pb.Empty{}, nil
 }
 
 func (s *server) SendMinLogIndex(ctx context.Context, req *pb.Empty) (*pb.MinLogIndexResponse, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	// From all servers get the minimum log index
 	minIndex := s.lastcommitedindex
 	for _, peer := range s.peers {
 		if !isReachable(peer) {
+			minIndex = 0
 			continue
 		}
 		conn, err := grpc.Dial(peer, grpc.WithInsecure())
@@ -101,11 +105,12 @@ func (s *server) SendMinLogIndex(ctx context.Context, req *pb.Empty) (*pb.MinLog
 		conn.Close()
 	}
 
-	// Send the minimum log index to all servers
 	for _, peer := range s.peers {
+
 		if !isReachable(peer) {
 			continue
 		}
+
 		conn, err := grpc.Dial(peer, grpc.WithInsecure())
 		if err != nil {
 			log.Printf("Warning: cannot connect to %s for heartbeat: %v", peer, err)
@@ -114,28 +119,62 @@ func (s *server) SendMinLogIndex(ctx context.Context, req *pb.Empty) (*pb.MinLog
 		client := pb.NewKeyValueStoreClient(conn)
 		_, err = client.ClearLogs(context.Background(), &pb.ClearFromNum{FromNum: minIndex})
 		if err != nil {
-			log.Printf("Warning: heartbeat failed to %s: %v", peer, err)
+			log.Printf("Warning: clear logs failed to %s: %v", peer, err)
 		}
 		conn.Close()
 	}
+
 	return &pb.MinLogIndexResponse{MinLogIndex: minIndex}, nil
 }
 
-func NewServer(ip string, peers []string) *server {
-	dataDir := "data_" + strings.Replace(ip, ":", "_", -1)
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
-		log.Fatalf("Failed to create data directory: %v", err)
-	}
-	return &server{
-		store:  make(map[string]string),
-		peers:  peers,
-		selfIp: ip,
+func (s *server) RegularLogClear() {
+	if s.selfIp == s.leaderIp {
+		ticker := time.NewTicker(60 * time.Second)
+		defer ticker.Stop()
 
+		for range ticker.C {
+			log.Printf("Clearing logs")
+			s.SendMinLogIndex(context.Background(), &pb.Empty{})
+
+		}
+	}
+}
+
+func initMongoDB(ip string) (*mongo.Client, *mongo.Database, *mongo.Collection) {
+	safeIP := strings.ReplaceAll(ip, ".", "_")
+	safeIP = strings.ReplaceAll(safeIP, ":", "_")
+
+	dbName := "kvstore_" + safeIP
+	clientOptions := options.Client().ApplyURI("mongodb://127.0.0.1:27017")
+	client, err := mongo.Connect(context.TODO(), clientOptions)
+	if err != nil {
+		log.Fatalf("Failed to connect to MongoDB: %v", err)
+	}
+	db := client.Database(dbName)
+	collection := db.Collection("store")
+	return client, db, collection
+}
+
+func NewServer(ip string, peers []string) *server {
+	client, db, collection := initMongoDB(ip)
+	return &server{
+		client:            client,
+		db:                db,
+		collection:        collection,
+		peers:             peers,
+		selfIp:            ip,
 		lastHeartbeatTime: time.Now(),
 		logs:              []Log{},
-		dataDir:           dataDir,
-		lastcommitedindex: -1,
+		lastcommitedindex: 0,
 	}
+
+}
+
+func (s *server) insertOrUpdateMongo(key string, value string) error {
+	filter := bson.M{"key": key}
+	update := bson.M{"$set": bson.M{"value": value}}
+	_, err := s.collection.UpdateOne(context.TODO(), filter, update, options.Update().SetUpsert(true))
+	return err
 }
 
 func (s *server) CommitDatatoDisk() {
@@ -146,15 +185,11 @@ func (s *server) CommitDatatoDisk() {
 	logtocommit := s.logs[lastcommited+1:]
 
 	for _, log := range logtocommit {
-		data, err := json.Marshal(StoreCommit{Key: log.key, Value: log.value})
-		if err != nil {
-			fmt.Printf("Warning: Could not serialize store data: %v", err)
-			return
-		}
 
-		storeFile := filepath.Join(s.dataDir, "store.json")
-		if err := ioutil.WriteFile(storeFile, data, 0644); err != nil {
-			fmt.Printf("Warning: Could not write store file: %v", err)
+		err := s.insertOrUpdateMongo(log.key, log.value)
+		if err != nil {
+			fmt.Printf("Error: Could not insert/update data in MongoDB: %v", err)
+			return
 		}
 
 	}
@@ -173,15 +208,19 @@ func (s *server) RegularLogCommit() {
 }
 
 func (s *server) LogCommit(ctx context.Context, req *pb.LogCommitRequest) (*pb.LogCommitResponse, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 
-	if req.LogIndex-1 != s.logs[len(s.logs)-1].index {
-		s.syncWithLeader(s.logs[len(s.logs)-1].index+1, req.LogIndex)
+	if len(s.logs) != 0 && req.LogIndex-1 != s.logs[len(s.logs)-1].index {
+		fmt.Println("sync started")
+		s.syncWithLeader(s.logs[len(s.logs)].index+1, req.LogIndex)
 		return &pb.LogCommitResponse{Success: false}, nil
 	}
 
-	s.store[req.Key] = req.Value
+	if len(s.logs) == 0 && req.LogIndex > 1 {
+		fmt.Println("sync started")
+		s.syncWithLeader(s.logs[len(s.logs)].index+1, req.LogIndex)
+		return &pb.LogCommitResponse{Success: false}, nil
+	}
+
 	s.logs = append(s.logs, Log{key: req.Key, value: req.Value, index: req.LogIndex})
 	return &pb.LogCommitResponse{Success: true}, nil
 }
@@ -224,14 +263,12 @@ func isReachable(addr string) bool {
 }
 
 func (s *server) electLeader() string {
-	//create array with string and int
 	available := []Mixed{}
 
 	if isReachable(s.selfIp) {
 		available = append(available, Mixed{StrVal: s.selfIp, IntVal: int(s.lastcommitedindex)})
 	}
 
-	// get last commited index from all servers
 	for _, peer := range s.peers {
 		if isReachable(peer) {
 			conn, err := grpc.Dial(peer, grpc.WithInsecure())
@@ -300,10 +337,28 @@ func (s *server) UpdateLeader(ctx context.Context, req *pb.UpdateLeaderRequest) 
 }
 
 func (s *server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	value, found := s.store[req.Key]
-	return &pb.GetResponse{Value: value, Found: found}, nil
+	if s.selfIp != s.leaderIp {
+		conn, err := grpc.Dial(s.leaderIp, grpc.WithInsecure())
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
+		client := pb.NewKeyValueStoreClient(conn)
+		return client.Get(ctx, req)
+	}
+
+	var result StoreCommit
+	err := s.collection.FindOne(ctx, bson.M{"key": req.Key}).Decode(&result)
+	if err == mongo.ErrNoDocuments {
+		fmt.Println("Key not found")
+		return &pb.GetResponse{Value: "", Found: false}, nil
+	} else if err != nil {
+		fmt.Println("Key not found")
+		return nil, err
+	}
+
+	return &pb.GetResponse{Value: result.Value, Found: true}, nil
+
 }
 
 func (s *server) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error) {
@@ -321,17 +376,13 @@ func (s *server) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, 
 	s.logs = append(s.logs, Log{key: req.Key, value: req.Value, index: newIndex})
 	s.lastcommitedindex = newIndex
 
-	s.mu.Lock()
 	s.store = make(map[string]string)
 	log.Printf("Put: %s -> %s", req.Key, req.Value)
-	data, _ := json.Marshal(StoreCommit{Key: req.Key, Value: req.Value})
-	storeFile := filepath.Join(s.dataDir, "store.json")
-	// add data to store file
-
-	if err := ioutil.WriteFile(storeFile, data, 0644); err != nil {
-		fmt.Printf("Warning: Could not write store file: %v", err)
+	err := s.insertOrUpdateMongo(req.Key, req.Value)
+	if err != nil {
+		log.Printf("Warning: Could not write to MongoDB: %v", err)
+		return &pb.PutResponse{Success: false}, nil
 	}
-	s.mu.Unlock()
 
 	success := s.SendLogCommitToPeers(req.Key, req.Value, newIndex)
 	if !success {
@@ -339,6 +390,7 @@ func (s *server) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, 
 		return &pb.PutResponse{Success: false}, nil
 	}
 	return &pb.PutResponse{Success: true}, nil
+
 }
 
 func (s *server) GetLogEntry(ctx context.Context, req *pb.GetLogEntryRequest) (*pb.GetLogEntryResponse, error) {
@@ -357,7 +409,6 @@ func (s *server) syncWithLeader(prevInd int32, currInd int32) {
 	for i := prevInd; i <= currInd; i++ {
 		log.Printf("Syncing with leader at index %d", i)
 		Ip := s.leaderIp
-		//get log entry from leader
 		conn, err := grpc.Dial(Ip, grpc.WithInsecure())
 		if err != nil {
 			log.Printf("Warning: unable to connect to %s: %v", Ip, err)
@@ -457,7 +508,6 @@ func main() {
 	selfIp := os.Args[1]
 	peers := os.Args[2:]
 
-	// Start listening first.
 	lis, err := net.Listen("tcp", selfIp)
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
@@ -466,7 +516,6 @@ func main() {
 	grpcServer := grpc.NewServer()
 	srv := NewServer(selfIp, peers)
 	pb.RegisterKeyValueStoreServer(grpcServer, srv)
-
 	go func() {
 		fmt.Printf("Server listening at %s\n", selfIp)
 		if err := grpcServer.Serve(lis); err != nil {
@@ -475,7 +524,6 @@ func main() {
 	}()
 
 	time.Sleep(1 * time.Second)
-
 	newLeader := srv.electLeader()
 	srv.mu.Lock()
 	srv.leaderIp = newLeader
@@ -485,10 +533,24 @@ func main() {
 	if srv.selfIp == newLeader {
 		srv.notifyPeers(newLeader)
 	}
+	if srv.selfIp != srv.leaderIp {
+		conn, err := grpc.Dial(srv.leaderIp, grpc.WithInsecure())
+		if err != nil {
+			log.Printf("Warning: cannot connect to %s to update leader: %v", srv.leaderIp, err)
+		}
+		client := pb.NewKeyValueStoreClient(conn)
+		resp, err := client.GetLogIndex(context.Background(), &pb.Empty{})
+		if err != nil {
+			log.Printf("Warning: cannot get logindex from %s to update leader: %v", srv.leaderIp, err)
+		}
+		srv.syncWithLeader(0, resp.LogIndex)
+	}
 
 	go srv.SendandReceiveHeartbeat()
 
 	go srv.RegularLogCommit()
+
+	go srv.RegularLogClear()
 
 	select {}
 }
