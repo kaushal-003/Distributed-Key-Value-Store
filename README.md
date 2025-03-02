@@ -26,14 +26,8 @@ go run server.go 127.0.0.1:5000 127.0.0.1:5001 127.0.0.1:5002
 ```
 cd tests
 gcc -o <testfile> <testfile.c> ./my-libkv.so -Wl,-rpath=.
+./<testfile>
 ```
-
-## Performance Results:
-1. While running multiple servers on single machine
-  ![image](https://github.com/user-attachments/assets/772a61b8-e8d8-4e7f-aed8-88d1d066c769)
-
-3. While running multiple servers on different machines
-![image](https://github.com/user-attachments/assets/f72491bd-6a84-4c03-9d41-1a74ffb3f458)
 
 Authors:
 1. Kaushal Kothiya - 21110107
